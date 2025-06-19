@@ -71,7 +71,7 @@ const Inscription = () => {
           name: trimmedName,
           email: trimmedEmail,
           password: trimmedPassword,
-          username: trimmedEmail, // Compatible avec l'API
+          username: trimmedEmail, 
         }),
       });
 

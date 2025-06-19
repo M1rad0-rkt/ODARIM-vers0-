@@ -14,6 +14,7 @@ const Layout = () => {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
   const [isNotificationOpen, setNotificationOpen] = useState(false);
+  const [isLogoutModalOpen, setLogoutModalOpen] = useState(false); // Nouvel état pour le modal
   const [notifications, setNotifications] = useState([]);
   const navigate = useNavigate();
 
@@ -70,13 +71,21 @@ const Layout = () => {
     }
   };
 
-  // Handle logout with confirmation
-  const handleLogout = async () => {
-    const confirmed = window.confirm('Êtes-vous sûr de vouloir vous déconnecter ?');
-    if (confirmed) {
-      await logout();
-      navigate('/');
-    }
+  // Handle logout with modal
+  const handleLogout = () => {
+    setLogoutModalOpen(true); // Ouvre le modal au lieu de window.confirm
+  };
+
+  // Confirm logout
+  const confirmLogout = async () => {
+    await logout();
+    setLogoutModalOpen(false);
+    navigate('/');
+  };
+
+  // Cancel logout
+  const cancelLogout = () => {
+    setLogoutModalOpen(false);
   };
 
   const renderLinks = () => {
@@ -173,8 +182,8 @@ const Layout = () => {
           <Link
             to="/"
             className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-white dark:to-white"
-            >
-            SatisGest
+          >
+            ClienTélia
           </Link>
 
           {/* Desktop Menu */}
@@ -470,6 +479,34 @@ const Layout = () => {
           </div>
         )}
       </header>
+
+      {/* Logout Confirmation Modal */}
+      {isLogoutModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-80 border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
+              Confirmer la déconnexion
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Êtes-vous sûr de vouloir vous déconnexion ?
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelLogout}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={confirmLogout}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors duration-200"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 pt-20 md:pt-24">
         <div className="container mx-auto px-4 py-8">
