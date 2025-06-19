@@ -1,4 +1,3 @@
-// src/pages/admin/DetailDemande.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getRequestById, updateRequestStatus } from '../../api/requests';
@@ -32,7 +31,7 @@ const DetailDemande = () => {
   const [adminComment, setAdminComment] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
-  
+
   useEffect(() => {
     const fetchRequest = async () => {
       try {
@@ -48,7 +47,7 @@ const DetailDemande = () => {
         setLoading(false);
       }
     };
-  
+
     fetchRequest();
   }, [id]);
 
@@ -93,7 +92,7 @@ const DetailDemande = () => {
       </button>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Demande #{request.id}</h1>
+        <h1 className="text-2xl font-bold">Demande de {request.user_name}</h1>
         <div className="flex gap-4 mt-2">
           <StatusBadge status={request.status} />
           <div className="text-sm text-gray-500 flex items-center">
@@ -110,7 +109,7 @@ const DetailDemande = () => {
             <h2 className="font-semibold text-lg mb-2">{request.title}</h2>
             <div className="text-sm text-gray-600 mb-2 flex items-center">
               <User size={14} className="mr-1" />
-              Client ID: {request.user_id}
+              Client: {request.user_name || 'Nom indisponible'}
             </div>
             <p className="text-sm whitespace-pre-line">{request.description}</p>
           </div>
@@ -177,7 +176,7 @@ const DetailDemande = () => {
               <p><strong>Catégorie :</strong> {request.category}</p>
               <p><strong>Créée le :</strong> {formatDate(request.created_at)}</p>
               <p><strong>Mis à jour le :</strong> {formatDate(request.updated_at)}</p>
-              <p><strong>Client ID :</strong> {request.user_id}</p>
+              <p><strong>Client :</strong> {request.user_name || 'Nom indisponible'}</p>
             </div>
           </div>
 

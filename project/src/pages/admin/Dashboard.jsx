@@ -8,7 +8,7 @@ import {
   AlertTriangle, Star
 } from 'lucide-react';
 import StatusBadge from '../../components/StatusBadge';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList } from 'recharts';
 
 const formatDate = (dateString) => {
   const date = new Date(dateString);
@@ -29,7 +29,6 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Appliquer la classe .dark au <html> en fonction de darkMode
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
 
@@ -37,7 +36,7 @@ const Dashboard = () => {
     const fetchStats = async () => {
       try {
         const data = await getStats();
-        console.log('Stats data:', data); // Debug: inspecter les données
+        console.log('Stats data:', data);
         if (!data || !data.statusCounts) {
           throw new Error('Données incomplètes reçues');
         }
@@ -61,18 +60,16 @@ const Dashboard = () => {
     fetchStats();
   }, []);
 
-  // Couleurs adaptées au mode sombre
   const statusData = stats ? [
-    { name: 'En attente', count: stats.statusCounts.en_attente || 0, color: darkMode ? 'rgb(var(--color-warning))' : '#f59e0b' },
-    { name: 'Résolues', count: stats.statusCounts.resolue || 0, color: darkMode ? 'rgb(var(--color-success))' : '#22c55e' },
-    { name: 'Rejetées', count: stats.statusCounts.rejetee || 0, color: darkMode ? 'rgb(var(--color-error))' : '#ef4444' },
+    { name: 'En attente', count: stats.statusCounts.en_attente || 0, color: darkMode ? 'rgb(var(--color-warning))' : '#f59e0b', icon: Clock },
+    { name: 'En cours', count: stats.statusCounts.en_cours || 0, color: darkMode ? 'rgb(var(--color-blue))' : '#3b82f6', icon: Clock },
+    { name: 'Résolues', count: stats.statusCounts.resolue || 0, color: darkMode ? 'rgb(var(--color-success))' : '#22c55e', icon: CheckCircle },
+    { name: 'Rejetées', count: stats.statusCounts.rejetee || 0, color: darkMode ? 'rgb(var(--color-error))' : '#ef4444', icon: AlertTriangle },
   ] : [];
 
-  // Debug: vérifier avgRating et rejetee
   console.log('Average Rating:', stats?.avgRating);
   console.log('Rejected Requests:', stats?.statusCounts?.rejetee);
 
-  // Calculer le pourcentage pour la progression circulaire
   const ratingPercentage = stats?.avgRating ? (stats.avgRating / 5) * 100 : 0;
   const strokeDasharray = `${ratingPercentage} ${100 - ratingPercentage}`;
   const strokeColor = stats?.avgRating >= 3.5 ? 'rgb(var(--color-success))' : 'rgb(var(--color-warning))';
@@ -108,7 +105,6 @@ const Dashboard = () => {
         </p>
       </div>
       
-      {/* Fallback UI if stats is null */}
       {!stats ? (
         <div className="p-4 rounded-md bg-warning/10 text-warning border border-warning/20">
           <AlertTriangle size={18} className="mr-2 inline" />
@@ -116,54 +112,49 @@ const Dashboard = () => {
         </div>
       ) : (
         <>
-          {/* Stats cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="card hover:scale-105">
-              <div className="flex items-center">
-                <div className="mr-3 p-2 rounded-full bg-primary/10 text-primary">
-                  <MessageSquare size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-text/60">Total demandes</p>
-                  <h3 className="text-xl font-bold text-text">{stats.total || 0}</h3>
-                </div>
+          {/* Barre de statistiques */}
+          <div className="card mb-6 p-6 relative">
+            <div className="flex justify-center mb-4">
+              <div className="inline-flex items-center px-4 py-2 bg-primary/10 text-primary rounded-full font-medium text-sm shadow-md">
+                <MessageSquare size={16} className="mr-2" />
+                Total demandes : <span className="ml-1 font-bold">{stats.total || 0}</span>
               </div>
             </div>
-            
-            <div className="card hover:scale-105">
-              <div className="flex items-center">
-                <div className="mr-3 p-2 rounded-full bg-primary/10 text-primary">
-                  <Clock size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-text/60">Demandes en cours</p>
-                  <h3 className="text-xl font-bold text-text">{stats.statusCounts.en_attente || 0}</h3>
-                </div>
-              </div>
+            <div className="flex h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 shadow-inner">
+              {statusData.map((item, index) => {
+                const width = stats.total > 0 ? (item.count / stats.total) * 100 : 0;
+                const isSmall = width < 10;
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.name}
+                    className="flex items-center justify-center transition-all duration-500 ease-out relative min-w-[50px]"
+                    style={{ width: `${width}%`, backgroundColor: item.color }}
+                    aria-label={`${item.name}: ${item.count} demande(s)`}
+                    aria-describedby={`status-label-${index}`}
+                  >
+                    <div className={`flex items-center gap-1 text-white font-semibold ${isSmall ? 'text-xs' : 'text-base'} text-shadow-sm`}>
+                      <Icon size={isSmall ? 14 : 16} />
+                      {item.count}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            
-            <div className="card hover:scale-105">
-              <div className="flex items-center">
-                <div className="mr-3 p-2 rounded-full bg-success/10 text-success">
-                  <CheckCircle size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-text/60">Demandes résolues</p>
-                  <h3 className="text-xl font-bold text-text">{stats.statusCounts.resolue || 0}</h3>
-                </div>
-              </div>
-            </div>
-            
-            <div className="card hover:scale-105">
-              <div className="flex items-center">
-                <div className="mr-3 p-2 rounded-full bg-error/10 text-error">
-                  <AlertTriangle size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-text/60">Demandes rejetées</p>
-                  <h3 className="text-xl font-bold text-text">{stats.statusCounts.rejetee || 0}</h3>
-                </div>
-              </div>
+            <div className="flex justify-between mt-2 text-xs text-text/60">
+              {statusData.map((item, index) => (
+                <span
+                  key={item.name}
+                  id={`status-label-${index}`}
+                  className={
+                    item.name === 'En attente' || item.name === 'En cours' || item.name === 'Résolues'
+                      ? 'font-bold'
+                      : ''
+                  }
+                >
+                  {item.name}
+                </span>
+              ))}
             </div>
           </div>
 
@@ -217,27 +208,53 @@ const Dashboard = () => {
                 <h2 className="text-base font-semibold text-text">Vue d'ensemble des demandes</h2>
               </div>
               
-              <div className="h-64">
+              <div className="h-80">
                 {statusData.length === 0 ? (
                   <p className="text-sm text-text/60 text-center">Aucune donnée de statut disponible</p>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={statusData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                    <BarChart 
+                      data={statusData} 
+                      margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
+                    >
                       <CartesianGrid stroke="rgb(var(--color-border))" strokeDasharray="3 3" />
-                      <XAxis dataKey="name" tick={{ fill: 'rgb(var(--color-text))' }} />
-                      <YAxis tick={{ fill: 'rgb(var(--color-text))' }} />
+                      <XAxis 
+                        dataKey="name" 
+                        tick={{ fill: 'rgb(var(--color-text))', fontSize: 14 }} 
+                        interval={0}
+                      />
+                      <YAxis 
+                        tick={{ fill: 'rgb(var(--color-text))', fontSize: 14 }} 
+                        interval={0}
+                        domain={[0, dataMax => Math.ceil(dataMax * 1.1)]}
+                      />
                       <Tooltip 
                         contentStyle={{ 
                           backgroundColor: 'rgb(var(--color-background))', 
                           border: '1px solid rgb(var(--color-border))',
-                          color: 'rgb(var(--color-text))'
+                          borderRadius: '8px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          color: 'rgb(var(--color-text))',
+                          padding: '8px'
                         }} 
                       />
-                      <Legend />
-                      <Bar dataKey="count" name="Nombre de demandes">
+                      <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                      <Bar 
+                        dataKey="count" 
+                        name="Nombre de demandes" 
+                        rx={4} 
+                        ry={4}
+                        animationDuration={800}
+                      >
                         {statusData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
+                        <LabelList 
+                          dataKey="count" 
+                          position="top" 
+                          fill="rgb(var(--color-text))" 
+                          fontSize={12}
+                        />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>

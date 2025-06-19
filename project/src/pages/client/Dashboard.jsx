@@ -11,8 +11,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState('cards'); // 'cards' ou 'table'
-  const requestsPerPage = 10;
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' ou 'list'
+  const requestsPerPage = 9; // 3x3 grille pour la vue cartes
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -185,107 +185,98 @@ const Dashboard = () => {
                 <Grid size={20} />
               </button>
               <button
-                onClick={() => setViewMode('table')}
+                onClick={() => setViewMode('list')}
                 className={`p-2 rounded-lg transition-all duration-200 ${
-                  viewMode === 'table'
+                  viewMode === 'list'
                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-200'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
-                title="Vue tableau"
-                aria-label="Vue tableau"
+                title="Vue liste"
+                aria-label="Vue liste"
               >
                 <Table size={20} />
               </button>
             </div>
           </div>
 
-          {/* Desktop : Cartes ou Tableau */}
+          {/* Desktop : Cartes ou Liste */}
           <div className="hidden md:block">
             {viewMode === 'cards' ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {currentRequests.map((request) => (
                   <RequestCard key={request.id} request={request} />
                 ))}
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-100 dark:bg-gray-900">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
-                        Titre
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
-                        Statut
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {currentRequests.map((request, index) => (
-                      <tr
-                        key={request.id}
-                        className={`transition-all duration-200 ${
-                          index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700'
-                        } hover:bg-gray-100 dark:hover:bg-gray-600`}
-                      >
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-sm">
-                          {request.title || 'Sans titre'}
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <span
-                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
-                              request.status === 'resolue'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
-                                : request.status === 'en_attente'
-                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200'
-                                : request.status === 'en_cours'
-                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
-                                : request.status === 'rejetee'
-                                ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200'
-                                : 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-200'
-                            }`}
-                          >
-                            <Circle
-                              size={8}
-                              className={`${
+              <div className="max-h-[600px] overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="space-y-3 p-4">
+                  {currentRequests.map((request) => (
+                    <Link
+                      key={request.id}
+                      to={`/client/details-demandes/${request.id}`}
+                      className="block bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      aria-label={`Voir détails de la demande ${request.title || request.id}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate max-w-sm">
+                            {request.title || 'Sans titre'}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                                 request.status === 'resolue'
-                                  ? 'text-green-500'
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
                                   : request.status === 'en_attente'
-                                  ? 'text-yellow-500'
+                                  ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200'
                                   : request.status === 'en_cours'
-                                  ? 'text-blue-500'
+                                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
                                   : request.status === 'rejetee'
-                                  ? 'text-red-500'
-                                  : 'text-gray-500'
+                                  ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200'
+                                  : 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-200'
                               }`}
-                            />
-                            {request.status === 'resolue'
-                              ? 'Résolue'
-                              : request.status === 'en_attente'
-                              ? 'En attente'
-                              : request.status === 'en_cours'
-                              ? 'En cours'
-                              : request.status === 'rejetee'
-                              ? 'Rejetée'
-                              : 'Inconnu'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                          {request.created_at
-                            ? new Date(request.created_at).toLocaleDateString('fr-FR', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                              })
-                            : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 text-right">
+                            >
+                              <Circle
+                                size={8}
+                                className={`${
+                                  request.status === 'resolue'
+                                    ? 'text-green-500'
+                                    : request.status === 'en_attente'
+                                    ? 'text-yellow-500'
+                                    : request.status === 'en_cours'
+                                    ? 'text-blue-500'
+                                    : request.status === 'rejetee'
+                                    ? 'text-red-500'
+                                    : 'text-gray-500'
+                                }`}
+                              />
+                              {request.status === 'resolue'
+                                ? 'Résolue'
+                                : request.status === 'en_attente'
+                                ? 'En attente'
+                                : request.status === 'en_cours'
+                                ? 'En cours'
+                                : request.status === 'rejetee'
+                                ? 'Rejetée'
+                                : 'Inconnu'}
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {request.created_at
+                                ? new Date(request.created_at).toLocaleDateString('fr-FR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                  })
+                                : 'N/A'}
+                            </span>
+                            {request.category && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {request.category}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
                           <Link
                             to={`/client/details-demandes/${request.id}`}
                             className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -294,11 +285,12 @@ const Dashboard = () => {
                           >
                             <Eye size={16} />
                           </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <ChevronRight size={16} className="text-gray-400 dark:text-gray-500" />
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
           </div>
