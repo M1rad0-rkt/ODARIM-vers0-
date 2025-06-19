@@ -31,7 +31,6 @@ const Demandes = () => {
     const fetchRequests = async () => {
       try {
         const data = await getAllRequests();
-        console.log('Requests data:', data);
         setRequests(data);
         setFilteredRequests(data.filter((req) => !req.is_updated && !['resolue', 'rejetee'].includes(req.status)));
       } catch (err) {
@@ -104,69 +103,72 @@ const Demandes = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 animate-fade-in">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
             Gestion des Demandes
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
             Supervisez et gérez les demandes clients
           </p>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-4 p-4 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 flex items-center">
-            <AlertTriangle size={16} className="mr-2" />
-            <span className="text-sm">{error}</span>
+          <div className="mb-4 p-3 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 flex items-center text-sm">
+            <AlertTriangle size={14} className="mr-2" />
+            <span>{error}</span>
           </div>
         )}
 
         {/* Toolbar */}
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
+          <div className="flex flex-col gap-3">
             {/* View Mode Toggle */}
-            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-full p-1">
-              <button
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  viewMode === 'active'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-                onClick={() => setViewMode('active')}
-              >
-                Actives
-              </button>
-              <button
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  viewMode === 'old'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-                onClick={() => setViewMode('old')}
-              >
-                Anciennes
-              </button>
+            <div className="flex justify-between items-center">
+              <div className="flex bg-gray-100 dark:bg-gray-700 rounded-full p-1">
+                <button
+                  className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+                    viewMode === 'active'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                  onClick={() => setViewMode('active')}
+                >
+                  Actives
+                </button>
+                <button
+                  className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+                    viewMode === 'old'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                  onClick={() => setViewMode('old')}
+                >
+                  Anciennes
+                </button>
+              </div>
+              <Filter size={16} className="text-gray-500 dark:text-gray-400" />
             </div>
 
             {/* Filters */}
-            <div className="flex-1 flex flex-col sm:flex-row gap-3 w-full">
-              <div className="relative flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="relative">
                 <input
                   type="text"
-                  placeholder="Rechercher par titre ou description..."
-                  className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="Rechercher..."
+                  className="w-full pl-8 pr-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
+                <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
               </div>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="all">Tous Statuts</option>
                 <option value="en_attente">En attente</option>
@@ -177,7 +179,7 @@ const Demandes = () => {
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="all">Toutes Catégories</option>
                 {getUniqueCategories()
@@ -197,7 +199,7 @@ const Demandes = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
               {visibleRequests.map((request) => {
                 const isOld = request.is_updated || ['resolue', 'rejetee'].includes(request.status);
                 return (
@@ -213,7 +215,7 @@ const Demandes = () => {
                         </h3>
                         <div className="flex items-center gap-2">
                           {isOld && (
-                            <Lock size={14} className="text-gray-400 dark:text-gray-500" title="Demande non modifiable" />
+                            <Lock size={12} className="text-gray-400 dark:text-gray-500" title="Demande non modifiable" />
                           )}
                           <button
                             onClick={() => handleViewRequest(request.id, isOld)}
@@ -225,7 +227,7 @@ const Demandes = () => {
                             title={isOld ? 'Demande non modifiable' : 'Voir les détails'}
                             disabled={isOld}
                           >
-                            <Eye size={16} />
+                            <Eye size={14} />
                           </button>
                         </div>
                       </div>
@@ -238,7 +240,7 @@ const Demandes = () => {
                       </div>
 
                       {/* Status */}
-                      <div className="mt-3">
+                      <div className="mt-2">
                         <StatusBadge status={request.status} />
                       </div>
                     </div>
@@ -246,18 +248,18 @@ const Demandes = () => {
                     {/* Expandable Details */}
                     <div className="border-t border-gray-200 dark:border-gray-700">
                       <button
-                        className="w-full flex justify-between items-center px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        className="w-full flex justify-between items-center px-4 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                         onClick={() => toggleRequest(request.id)}
                       >
                         <span>Détails</span>
                         {expandedRequest === request.id ? (
-                          <ChevronUp size={16} />
+                          <ChevronUp size={14} />
                         ) : (
-                          <ChevronDown size={16} />
+                          <ChevronDown size={14} />
                         )}
                       </button>
                       {expandedRequest === request.id && (
-                        <div className="px-4 pb-4 text-sm text-gray-700 dark:text-gray-300">
+                        <div className="px-4 pb-4 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                           <p className="line-clamp-3">{request.description || 'Aucune description'}</p>
                           {request.admin_comment && (
                             <p className="mt-2 text-gray-600 dark:text-gray-400">
@@ -273,23 +275,23 @@ const Demandes = () => {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-4 mt-6">
+              <div className="flex justify-center items-center gap-3 mt-6">
                 <button
                   onClick={handlePrevPage}
-                  className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={totalPages <= 1}
                 >
-                  <ChevronLeft size={20} />
+                  <ChevronLeft size={16} />
                 </button>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                   Page {currentPage + 1} sur {totalPages}
                 </span>
                 <button
                   onClick={handleNextPage}
-                  className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={totalPages <= 1}
                 >
-                  <ChevronRight size={20} />
+                  <ChevronRight size={16} />
                 </button>
               </div>
             )}
