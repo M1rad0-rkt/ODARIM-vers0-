@@ -36,15 +36,13 @@ const NouvelleDemande = () => {
       setLoading(true);
       const requestData = { title, description, category };
       const newRequest = await createRequest(requestData);
-      console.log('New Request:', newRequest); // Debug: inspecter newRequest
+      console.log('New Request:', newRequest);
       setSuccess('Demande créée avec succès');
 
-      // Réinitialiser le formulaire
       setTitle('');
       setDescription('');
       setCategory('Autre');
 
-      // Rediriger vers /client/demandes après 2 secondes pour montrer le message de succès
       setTimeout(() => {
         navigate('/client/demandes');
       }, 2000);
@@ -56,7 +54,6 @@ const NouvelleDemande = () => {
     }
   };
 
-  // Clear success message after 3 seconds if still on page
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => setSuccess(''), 3000);
@@ -105,7 +102,7 @@ const NouvelleDemande = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="relative group">
                 <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
                   Titre
@@ -113,7 +110,7 @@ const NouvelleDemande = () => {
                 <input
                   id="title"
                   type="text"
-                  className="w-full px-4 py-2.5 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent transition-all duration-300 placeholder-gray-400 dark:placeholder-gray-500 text-sm group-hover:shadow-md"
+                  className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent transition-all duration-300 placeholder-gray-400 dark:placeholder-gray-500 text-sm group-hover:shadow-md focus:shadow-lg placeholder:font-light"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Résumez votre demande"
@@ -127,7 +124,7 @@ const NouvelleDemande = () => {
                 </label>
                 <select
                   id="category"
-                  className="w-full px-4 py-2.5 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent transition-all duration-300 appearance-none text-sm group-hover:shadow-md"
+                  className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent transition-all duration-300 appearance-none text-sm group-hover:shadow-md focus:shadow-lg cursor-pointer"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   required
@@ -138,7 +135,7 @@ const NouvelleDemande = () => {
                     </option>
                   ))}
                 </select>
-                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none top-1/2 transform -translate-y-1/2">
                   <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -151,7 +148,7 @@ const NouvelleDemande = () => {
                 </label>
                 <textarea
                   id="description"
-                  className="w-full px-4 py-2.5 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent transition-all duration-300 h-32 placeholder-gray-400 dark:placeholder-gray-500 text-sm group-hover:shadow-md"
+                  className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent transition-all duration-300 h-32 placeholder-gray-400 dark:placeholder-gray-500 text-sm group-hover:shadow-md focus:shadow-lg placeholder:font-light"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Décrivez votre demande..."
@@ -159,10 +156,10 @@ const NouvelleDemande = () => {
                 />
               </div>
 
-              <div className="flex justify-end space-x-4">
+              <div className="flex justify-end space-x-3">
                 <button
                   type="button"
-                  className="inline-flex items-center px-4 py-2 rounded-xl font-medium transition-all duration-300 border border-gray-200/50 dark:border-gray-600/50 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300 text-sm transform hover:scale-105"
+                  className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => navigate('/client/demandes')}
                   disabled={loading}
                 >
@@ -170,7 +167,7 @@ const NouvelleDemande = () => {
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center px-4 py-2 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-green-500 to-teal-500 dark:from-green-600 dark:to-teal-600 text-white hover:from-green-600 hover:to-teal-600 dark:hover:from-green-700 dark:hover:to-teal-700 text-sm transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-green-500 to-teal-500 dark:from-green-600 dark:to-teal-600 text-white text-sm font-medium hover:from-green-600 hover:to-teal-600 dark:hover:from-green-700 dark:hover:to-teal-700 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading}
                 >
                   {loading ? 'Création...' : 'Créer'}

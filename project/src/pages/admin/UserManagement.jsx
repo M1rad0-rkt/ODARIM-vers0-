@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+import { Users, Search, Eye, EyeOff, AlertCircle, CheckCircle, X, Edit2, Trash2 } from 'lucide-react';
 
 async function makeAuthenticatedRequest(url, options = {}) {
   let accessToken = localStorage.getItem('access_token');
@@ -55,11 +55,13 @@ const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'client' });
+  const [newUser, setNewUser] = useState({ first_name: '', email: '', password: '', role: 'client' });
   const [editingUser, setEditingUser] = useState(null);
   const [notification, setNotification] = useState(null);
   const [isLoading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 10;
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -69,6 +71,16 @@ const UserManagement = () => {
     }
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    // Auto-dismiss notification after 3 seconds
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -97,7 +109,7 @@ const UserManagement = () => {
     e.preventDefault();
     setNotification(null);
 
-    if (!newUser.name || !newUser.email || !newUser.password) {
+    if (!newUser.first_name || !newUser.email || !newUser.password) {
       setNotification({ type: 'error', message: 'Veuillez remplir tous les champs.' });
       return;
     }
@@ -116,7 +128,7 @@ const UserManagement = () => {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
         body: JSON.stringify({
-          name: newUser.name,
+          name: newUser.first_name,
           email: newUser.email,
           password: newUser.password,
           role: newUser.role,
@@ -124,13 +136,14 @@ const UserManagement = () => {
       });
 
       const data = await response.json();
+      console.log('Server response:', data);
 
       if (!response.ok) {
-        setNotification({ type: 'error', message: data.detail || 'Erreur lors de la création de l’utilisateur.' });
+        setNotification({ type: 'error', message: data.detail || JSON.stringify(data) || 'Erreur lors de la création de l’utilisateur.' });
         return;
       }
 
-      setNewUser({ name: '', email: '', password: '', role: 'client' });
+      setNewUser({ first_name: '', email: '', password: '', role: 'client' });
       fetchUsers();
       setNotification({ type: 'success', message: 'Utilisateur créé avec succès !' });
     } catch (error) {
@@ -200,272 +213,409 @@ const UserManagement = () => {
           (user?.first_name && user.first_name.toLowerCase().includes(query))
       )
     );
+    setCurrentPage(1);
+  };
+
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+
+  const paginate = (pageNumber) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
-    <div className="space-y-8 p-6 max-w-7xl mx-auto">
-      {notification && (
-        <div
-          className={`p-4 rounded-lg text-sm font-medium shadow-lg transform transition-all duration-300 ease-in-out animate-slide ${
-            notification.type === 'success'
-              ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
-              : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
-          }`}
-        >
-          {notification.message}
-        </div>
-      )}
-
-      {isLoading && (
-        <div className="text-center text-gray-600 dark:text-gray-300 flex items-center justify-center space-x-2">
-          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-600 dark:border-blue-400"></div>
-          <span>Chargement...</span>
-        </div>
-      )}
-
-      <div className="flex items-center space-x-3">
-        <Users size={28} className="text-blue-600 dark:text-blue-400" />
-        <h1 className="text-3xl font-semibold text-gray-900 dark:text-white">
-          Gestion des utilisateurs
-        </h1>
-      </div>
-
-      <div className="relative max-w-md">
-        <input
-          type="text"
-          placeholder="Rechercher par email ou nom..."
-          value={searchQuery}
-          onChange={handleSearch}
-          className="w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-700 rounded-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-400 transition-all duration-300"
-        />
-        <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 dark:text-gray-400" />
-      </div>
-
-      <form
-        onSubmit={handleCreateUser}
-        className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-8 border border-gray-200 dark:border-gray-800"
-      >
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-          Créer un nouvel utilisateur
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Nom complet
-            </label>
-            <input
-              type="text"
-              placeholder="Nom complet"
-              value={newUser.name}
-              onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-400 transition-colors duration-300"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              placeholder="Email"
-              value={newUser.email}
-              onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-400 transition-colors duration-300"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Rôle
-            </label>
-            <select
-              value={newUser.role}
-              onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-400 transition-colors duration-300"
-            >
-              <option value="client">Client</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Mot de passe
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Mot de passe"
-                value={newUser.password}
-                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-400 transition-colors duration-300"
-                required
-              />
-              <button
-                type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 dark:text-gray-400 hover:text-blue-700 dark:hover:text-blue-400"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              <span className={newUser.password.length >= 6 ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
-                {newUser.password.length >= 6 ? <CheckCircle size={14} className="inline mr-1" /> : <AlertCircle size={14} className="inline mr-1" />}
-                Au moins 6 caractères
-              </span>
-            </div>
-          </div>
-        </div>
-        <button
-          type="submit"
-          className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-400 transition-colors duration-200 shadow-md disabled:bg-gray-600 disabled:cursor-not-allowed"
-          disabled={isLoading}
-        >
-          Créer un utilisateur
-        </button>
-      </form>
-
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-hidden">
-        <table className="min-w-full">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-200 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-200 uppercase tracking-wider">
-                Nom
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-200 uppercase tracking-wider">
-                Rôle
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-200 uppercase tracking-wider">
-                Date de création
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-200 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((user, index) => (
-              <tr
-                key={user.id}
-                className={`${
-                  index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'
-                } hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200`}
-              >
-                <td className="px-6 py-4 text-gray-900 dark:text-gray-100">{user.email}</td>
-                <td className="px-6 py-4 text-gray-900 dark:text-gray-100">{user.first_name || '-'}</td>
-                <td className="px-6 py-4 text-gray-900 dark:text-gray-100">
-                  {user.role === 'admin' ? (
-                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300">
-                      Admin
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full dark:bg-green-900 dark:text-green-300">
-                      Client
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 text-gray-900 dark:text-gray-100">
-                  {new Date(user.created_at).toLocaleDateString('fr-FR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                  })}
-                </td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={() => setEditingUser(user)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg mr-2 hover:bg-blue-700 focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-400 transition-colors duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed"
-                    disabled={isLoading}
-                  >
-                    Modifier
-                  </button>
-                  <button
-                    onClick={() => handleDeleteUser(user.id)}
-                    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-300 dark:focus:ring-red-400 transition-colors duration-200 disabled:bg-gray-600 disabled:cursor-not-allowed"
-                    disabled={isLoading}
-                  >
-                    Supprimer
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {editingUser && (
-        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-8">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-            Modifier l'utilisateur
-          </h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleUpdateUser(editingUser.id);
-            }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 sm:p-6 font-sans">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Notification */}
+        {notification && (
+          <div
+            className={`flex items-center p-4 rounded-xl text-sm font-medium shadow-lg transform transition-all duration-300 ease-in-out animate-slide ${
+              notification.type === 'success'
+                ? 'bg-gradient-to-r from-green-100 to-green-200 dark:from-green-800 dark:to-green-900 text-green-800 dark:text-green-100 border border-green-300 dark:border-green-700'
+                : 'bg-gradient-to-r from-red-100 to-red-200 dark:from-red-800 dark:to-red-900 text-red-800 dark:text-red-100 border border-red-300 dark:border-red-700'
+            }`}
           >
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {notification.type === 'success' ? (
+              <CheckCircle size={20} className="mr-3 flex-shrink-0" />
+            ) : (
+              <AlertCircle size={20} className="mr-3 flex-shrink-0" />
+            )}
+            <span>{notification.message}</span>
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-auto text-current hover:text-green-900 dark:hover:text-green-50"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {isLoading && (
+          <div className="flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300">
+            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm font-medium">Chargement...</span>
+          </div>
+        )}
+
+        {/* Header */}
+        <div className="flex items-center space-x-3">
+          <Users size={24} className="text-blue-600 dark:text-blue-400" />
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
+            Gestion des utilisateurs
+          </h1>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative max-w-md">
+          <input
+            type="text"
+            placeholder="Rechercher par email ou nom..."
+            value={searchQuery}
+            onChange={handleSearch}
+            className="w-full px-4 py-2 pl-10 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-sm placeholder:font-light group-hover:shadow-md"
+          />
+          <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+        </div>
+
+        {/* Create User Form */}
+        <form
+          onSubmit={handleCreateUser}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-800"
+        >
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            Créer un nouvel utilisateur
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="relative group">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                 Nom complet
               </label>
               <input
                 type="text"
-                value={editingUser.first_name || ''}
-                onChange={(e) => setEditingUser({ ...editingUser, first_name: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-400 transition-colors duration-300"
+                placeholder="Nom complet"
+                value={newUser.first_name}
+                onChange={(e) => setNewUser({ ...newUser, first_name: e.target.value })}
+                className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg placeholder:font-light"
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <div className="relative group">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                 Email
               </label>
               <input
                 type="email"
-                value={editingUser.email}
-                onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-400 transition-colors duration-300"
+                placeholder="Email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg placeholder:font-light"
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <div className="relative group">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                 Rôle
               </label>
-              <select
-                value={editingUser.role}
-                onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-400 transition-colors duration-300"
-              >
-                <option value="client">Client</option>
-                <option value="admin">Admin</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg appearance-none cursor-pointer"
+                >
+                  <option value="client">Client</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none top-1/2 transform -translate-y-1/2">
+                  <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
             </div>
-            <div className="flex gap-4 mt-4">
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-400 transition-colors duration-200 shadow-md disabled:bg-gray-600 disabled:cursor-not-allowed"
-                disabled={isLoading}
+            <div className="relative group">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                Mot de passe
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Mot de passe"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg placeholder:font-light"
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                <span className={newUser.password.length >= 6 ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
+                  {newUser.password.length >= 6 ? <CheckCircle size={14} className="inline mr-1" /> : <AlertCircle size={14} className="inline mr-1" />}
+                  Au moins 6 caractères
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-3">
+            <button
+              type="submit"
+              className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white text-sm font-medium hover:from-blue-600 hover:to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
+            >
+              Créer un utilisateur
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewUser({ first_name: '', email: '', password: '', role: 'client' })}
+              className="inline-flex items-center px-4 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+            >
+              Réinitialiser
+            </button>
+          </div>
+        </form>
+
+        {/* Users List */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Liste des utilisateurs</h3>
+          
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                    Nom
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                    Rôle
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {currentUsers.map((user) => (
+                  <tr 
+                    key={user.id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
+                  >
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">
+                      {user.email}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                      {user.first_name || 'N/A'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        user.role === 'admin' 
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
+                          : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                      }`}>
+                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                      {new Date(user.created_at).toLocaleDateString('fr-FR', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => setEditingUser(user)}
+                          className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                          disabled={isLoading}
+                          title="Modifier"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user.id)}
+                          className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+                          disabled={isLoading}
+                          title="Supprimer"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile List */}
+          <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+            {currentUsers.map((user) => (
+              <div
+                key={user.id}
+                className="py-3 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
               >
-                Enregistrer
+                <div className="flex-1 px-2">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {user.email}
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                    {user.first_name || 'N/A'}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      user.role === 'admin' 
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
+                        : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                    }`}>
+                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(user.created_at).toLocaleDateString('fr-FR', {
+                        day: '2-digit',
+                        month: 'short'
+                      })}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-2 px-2">
+                  <button
+                    onClick={() => setEditingUser(user)}
+                    className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    disabled={isLoading}
+                    title="Modifier"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteUser(user.id)}
+                    className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+                    disabled={isLoading}
+                    title="Supprimer"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex justify-center items-center gap-2">
+              <button
+                onClick={() => paginate(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Précédent
               </button>
+              <span className="text-sm text-gray-600 dark:text-gray-300">
+                Page {currentPage} sur {totalPages}
+              </span>
               <button
-                type="button"
-                onClick={() => setEditingUser(null)}
-                className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-400 transition-colors duration-200 shadow-md disabled:bg-gray-600 disabled:cursor-not-allowed"
-                disabled={isLoading}
+                onClick={() => paginate(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Annuler
+                Suivant
               </button>
             </div>
-          </form>
+          )}
         </div>
-      )}
+
+        {/* Edit User Form */}
+        {editingUser && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-800">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Modifier l'utilisateur
+            </h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleUpdateUser(editingUser.id);
+              }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            >
+              <div className="relative group">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                  Nom complet
+                </label>
+                <input
+                  type="text"
+                  value={editingUser.first_name || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, first_name: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg placeholder:font-light"
+                  required
+                />
+              </div>
+              <div className="relative group">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editingUser.email}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg placeholder:font-light"
+                  required
+                />
+              </div>
+              <div className="relative group">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                  Rôle
+                </label>
+                <div className="relative">
+                  <select
+                    value={editingUser.role}
+                    onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                    className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg appearance-none cursor-pointer"
+                  >
+                    <option value="client">Client</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none top-1/2 transform -translate-y-1/2">
+                    <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-4">
+                <button
+                  type="submit"
+                  className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white text-sm font-medium hover:from-blue-600 hover:to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isLoading}
+                >
+                  Enregistrer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { getUserRequests } from '../../api/requests';
-import { PlusCircle, AlertCircle } from 'lucide-react';
+import { PlusCircle, AlertCircle, Eye, Grid, Table, Circle, ChevronRight } from 'lucide-react';
 import RequestCard from '../../components/RequestCard';
 
 const Dashboard = () => {
@@ -10,19 +10,30 @@ const Dashboard = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' ou 'table'
+  const requestsPerPage = 10;
 
   useEffect(() => {
     const fetchRequests = async () => {
       if (!user) {
-        setzenLoading(false);
+        setLoading(false);
         return;
       }
       try {
         const data = await getUserRequests(user.id);
-        setRequests(data);
+        console.log('Données des demandes:', data); // Pour déboguer
+        if (!Array.isArray(data)) {
+          console.error('Les données reçues ne sont pas un tableau:', data);
+          setError('Format de données invalide.');
+          setRequests([]);
+        } else {
+          setRequests(data);
+        }
       } catch (err) {
         console.error('Erreur lors de la récupération des demandes:', err);
         setError('Impossible de charger vos demandes.');
+        setRequests([]);
       } finally {
         setLoading(false);
       }
@@ -35,6 +46,7 @@ const Dashboard = () => {
     const total = requests.length;
     const acceptedCount = requests.filter(r => r.status === 'resolue').length;
     const pendingCount = requests.filter(r => r.status === 'en_attente').length;
+    const inProgressCount = requests.filter(r => r.status === 'en_cours').length;
     const rejectedCount = requests.filter(r => r.status === 'rejetee').length;
 
     return {
@@ -46,6 +58,10 @@ const Dashboard = () => {
         count: pendingCount,
         percent: total > 0 ? Math.round((pendingCount / total) * 100) : 0
       },
+      inProgress: {
+        count: inProgressCount,
+        percent: total > 0 ? Math.round((inProgressCount / total) * 100) : 0
+      },
       rejected: {
         count: rejectedCount,
         percent: total > 0 ? Math.round((rejectedCount / total) * 100) : 0
@@ -54,7 +70,18 @@ const Dashboard = () => {
     };
   }, [requests]);
 
-  const { accepted, pending, rejected, total } = stats;
+  // Pagination
+  const indexOfLastRequest = currentPage * requestsPerPage;
+  const indexOfFirstRequest = indexOfLastRequest - requestsPerPage;
+  const currentRequests = requests.slice(indexOfFirstRequest, indexOfLastRequest);
+  const totalPages = Math.ceil(requests.length / requestsPerPage);
+
+  const paginate = (pageNumber) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const { accepted, pending, inProgress, rejected, total } = stats;
 
   if (loading) {
     return (
@@ -96,7 +123,7 @@ const Dashboard = () => {
       </div>
 
       {/* Statistiques des demandes */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-slide-in">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-slide-in">
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-600 transition-transform duration-300 hover:scale-105">
           <p className="text-sm font-medium text-green-600 dark:text-green-400">Acceptées</p>
           <p className="text-xl font-bold text-green-600 dark:text-green-400">{accepted.percent}%</p>
@@ -106,6 +133,11 @@ const Dashboard = () => {
           <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">En attente</p>
           <p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">{pending.percent}%</p>
           <p className="text-sm text-gray-600 dark:text-gray-400">{pending.count} demande(s)</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-600 transition-transform duration-300 hover:scale-105">
+          <p className="text-sm font-medium text-blue-600 dark:text-blue-400">En cours</p>
+          <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{inProgress.percent}%</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{inProgress.count} demande(s)</p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-600 transition-transform duration-300 hover:scale-105">
           <p className="text-sm font-medium text-red-600 dark:text-red-400">Rejetées</p>
@@ -136,10 +168,233 @@ const Dashboard = () => {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-slide-in">
-          {requests.map((request) => (
-            <RequestCard key={request.id} request={request} />
-          ))}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-4 sm:p-6 animate-slide-in">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Vos demandes</h3>
+            <div className="hidden md:flex gap-2">
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`p-2 rounded-lg transition-all duration-200 ${
+                  viewMode === 'cards'
+                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-200'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                title="Vue cartes"
+                aria-label="Vue cartes"
+              >
+                <Grid size={20} />
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-2 rounded-lg transition-all duration-200 ${
+                  viewMode === 'table'
+                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-200'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                title="Vue tableau"
+                aria-label="Vue tableau"
+              >
+                <Table size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Desktop : Cartes ou Tableau */}
+          <div className="hidden md:block">
+            {viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {currentRequests.map((request) => (
+                  <RequestCard key={request.id} request={request} />
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-100 dark:bg-gray-900">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                        Titre
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                        Statut
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {currentRequests.map((request, index) => (
+                      <tr
+                        key={request.id}
+                        className={`transition-all duration-200 ${
+                          index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700'
+                        } hover:bg-gray-100 dark:hover:bg-gray-600`}
+                      >
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-sm">
+                          {request.title || 'Sans titre'}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <span
+                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
+                              request.status === 'resolue'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
+                                : request.status === 'en_attente'
+                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200'
+                                : request.status === 'en_cours'
+                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
+                                : request.status === 'rejetee'
+                                ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200'
+                                : 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-200'
+                            }`}
+                          >
+                            <Circle
+                              size={8}
+                              className={`${
+                                request.status === 'resolue'
+                                  ? 'text-green-500'
+                                  : request.status === 'en_attente'
+                                  ? 'text-yellow-500'
+                                  : request.status === 'en_cours'
+                                  ? 'text-blue-500'
+                                  : request.status === 'rejetee'
+                                  ? 'text-red-500'
+                                  : 'text-gray-500'
+                              }`}
+                            />
+                            {request.status === 'resolue'
+                              ? 'Résolue'
+                              : request.status === 'en_attente'
+                              ? 'En attente'
+                              : request.status === 'en_cours'
+                              ? 'En cours'
+                              : request.status === 'rejetee'
+                              ? 'Rejetée'
+                              : 'Inconnu'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                          {request.created_at
+                            ? new Date(request.created_at).toLocaleDateString('fr-FR', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <Link
+                            to={`/client/details-demandes/${request.id}`}
+                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            title="Voir détails"
+                            aria-label={`Voir détails de la demande ${request.title || request.id}`}
+                          >
+                            <Eye size={16} />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile : Liste compacte */}
+          <div className="md:hidden space-y-3">
+            {currentRequests.map((request) => (
+              <Link
+                key={request.id}
+                to={`/client/details-demandes/${request.id}`}
+                className="block bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                aria-label={`Voir détails de la demande ${request.title || request.id}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                      {request.title || 'Sans titre'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                          request.status === 'resolue'
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
+                            : request.status === 'en_attente'
+                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200'
+                            : request.status === 'en_cours'
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
+                            : request.status === 'rejetee'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200'
+                            : 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-200'
+                        }`}
+                      >
+                        <Circle
+                          size={8}
+                          className={`${
+                            request.status === 'resolue'
+                              ? 'text-green-500'
+                              : request.status === 'en_attente'
+                              ? 'text-yellow-500'
+                              : request.status === 'en_cours'
+                              ? 'text-blue-500'
+                              : request.status === 'rejetee'
+                              ? 'text-red-500'
+                              : 'text-gray-500'
+                          }`}
+                        />
+                        {request.status === 'resolue'
+                          ? 'Résolue'
+                          : request.status === 'en_attente'
+                          ? 'En attente'
+                          : request.status === 'en_cours'
+                          ? 'En cours'
+                          : request.status === 'rejetee'
+                          ? 'Rejetée'
+                          : 'Inconnu'}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {request.created_at
+                          ? new Date(request.created_at).toLocaleDateString('fr-FR', {
+                              day: '2-digit',
+                              month: 'short',
+                            })
+                          : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-gray-400 dark:text-gray-500" />
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex justify-center items-center gap-2">
+              <button
+                type="button"
+                onClick={() => paginate(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm text-gray-800 dark:text-gray-300 bg-gray-100 dark:bg-gray-900 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Précédent
+              </button>
+              <span className="text-sm text-gray-600 dark:text-gray-300">
+                Page {currentPage} de {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => paginate(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-sm text-gray-800 dark:text-gray-300 bg-gray-100 dark:bg-gray-900 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Suivant
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

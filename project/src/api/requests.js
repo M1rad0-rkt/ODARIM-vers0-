@@ -389,48 +389,36 @@ export const fetchProfile = async () => {
 };
 
 
-export const updateProfile = async (username, email) => {
+export const updateProfile = async ({ first_name, email, username }) => {
   let token = localStorage.getItem("access_token");
-
   if (!token) {
     throw new Error("Non authentifié.");
   }
-
   try {
     const response = await axios.put(
       'http://localhost:8000/api/users/me/',
-      { username, email },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      { first_name, email, username },
+      { headers: { Authorization: `Bearer ${token}` } }
     );
     return response.data;
-
   } catch (error) {
     if (error.response?.status === 401) {
       try {
         const newToken = await refreshAccessToken();
-
+        console.log("Nouveau token d'accès obtenu.");
         const retryResponse = await axios.put(
           'http://localhost:8000/api/users/me/',
-          { username, email },
-          {
-            headers: {
-              Authorization: `Bearer ${newToken}`,
-            },
-          }
+          { first_name, email, username },
+          { headers: { Authorization: `Bearer ${newToken}` } }
         );
-
         return retryResponse.data;
-
       } catch (refreshError) {
+        console.error("Refresh Token Error:", refreshError);
         throw new Error("Échec du rafraîchissement. Veuillez vous reconnecter.");
       }
     }
-
-    throw error;
+    const errorMessage = error.response?.data?.error || "La mise à jour a échoué.";
+    throw new Error(errorMessage);
   }
 };
 

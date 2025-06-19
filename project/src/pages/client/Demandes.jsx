@@ -32,7 +32,6 @@ const Demandes = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // Handle query parameters
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('success') === 'true') {
@@ -43,7 +42,6 @@ const Demandes = () => {
     }
   }, [location]);
 
-  // Clear success message
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => setSuccess(''), 3000);
@@ -51,7 +49,6 @@ const Demandes = () => {
     }
   }, [success]);
 
-  // Fetch requests
   const fetchRequests = async () => {
     try {
       if (user) {
@@ -74,7 +71,6 @@ const Demandes = () => {
     fetchRequests();
   }, [user]);
 
-  // Debounced filter
   const debouncedFilter = useCallback(
     debounce((term, status, category, reqs, showArchived) => {
       let result = [...reqs];
@@ -193,20 +189,20 @@ const Demandes = () => {
               {showArchived ? 'Consultez vos demandes archivées' : 'Gérez vos demandes en cours et consultez leur statut'}
             </p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <button
               onClick={toggleArchived}
-              className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-800 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white text-sm font-medium hover:from-blue-600 hover:to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800 transition-all duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
             >
-              <Archive size={18} className="mr-2" />
-              {showArchived ? 'Voir mes demandes actives' : 'Voir mes anciennes demandes'}
+              <Archive size={16} className="mr-2" />
+              {showArchived ? 'Demandes Actives' : 'Anciennes Demandes'}
             </button>
             {!showArchived && (
               <Link
                 to="/client/nouvelle-demande"
-                className="inline-flex items-center px-4 py-2 rounded-lg bg-green-600 dark:bg-green-700 text-white text-sm font-medium hover:bg-green-700 dark:hover:bg-green-800 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white text-sm font-medium hover:from-green-600 hover:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
               >
-                <PlusCircle size={18} className="mr-2" />
+                <PlusCircle size={16} className="mr-2" />
                 Nouvelle Demande
               </Link>
             )}
@@ -242,43 +238,48 @@ const Demandes = () => {
         )}
 
         {/* Search and Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-300 mb-6 animate-slide-in">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="relative w-full sm:w-96">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-300 mb-6 animate-slide-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="relative w-full sm:w-80 group">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={18} className="text-gray-400 dark:text-gray-500 group-focus-within:text-green-500 dark:group-focus-within:text-green-400 transition-colors duration-200" />
+              </div>
               <input
                 type="text"
                 placeholder="Rechercher une demande..."
-                className="w-full px-4 py-3 pl-12 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 transition-colors duration-200 text-sm"
+                className="w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent transition-all duration-300 text-sm shadow-sm hover:shadow-md placeholder:font-light"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <Search size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400" />
               {searchTerm && (
                 <button
                   onClick={handleClearSearch}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
                   aria-label="Effacer la recherche"
                 >
-                  <X size={20} />
+                  <X size={16} />
                 </button>
               )}
             </div>
             <button
-              className="inline-flex items-center px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:from-gray-200 hover:to-gray-300 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
               onClick={() => setIsFilterOpen(!isFilterOpen)}
             >
-              <ListFilter size={18} className="mr-2" />
+              <ListFilter size={16} className="mr-2" />
               Filtres
-              {isFilterOpen ? <ChevronUp size={18} className="ml-2" /> : <ChevronDown size={18} className="ml-2" />}
+              {isFilterOpen ? <ChevronUp size={16} className="ml-2" /> : <ChevronDown size={16} className="ml-2" />}
             </button>
           </div>
           {isFilterOpen && (
-            <div className="mt-4 flex flex-col sm:flex-row gap-4 animate-slide-in">
-              <div className="relative w-full sm:w-60">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-slide-in">
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <ListFilter size={16} className="text-gray-400 dark:text-gray-500 group-focus-within:text-green-500 dark:group-focus-within:text-green-400 transition-colors duration-200" />
+                </div>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-4 py-3 pl-12 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 transition-colors duration-200 text-sm"
+                  className="w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent transition-all duration-300 text-sm shadow-sm hover:shadow-md appearance-none cursor-pointer"
                 >
                   <option value="all">Tous Statuts</option>
                   <option value="en_attente">En attente</option>
@@ -286,13 +287,15 @@ const Demandes = () => {
                   <option value="resolue">Résolue</option>
                   <option value="rejetee">Rejetée</option>
                 </select>
-                <ListFilter size={18} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none" />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <ChevronDown size={16} className="text-gray-400 dark:text-gray-500" />
+                </div>
               </div>
-              <div className="w-full sm:w-60">
+              <div className="relative group">
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 transition-colors duration-200 text-sm"
+                  className="w-full pl-4 pr-10 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent transition-all duration-300 text-sm shadow-sm hover:shadow-md appearance-none cursor-pointer"
                 >
                   <option value="all">Toutes Catégories</option>
                   {getUniqueCategories()
@@ -303,6 +306,9 @@ const Demandes = () => {
                       </option>
                     ))}
                 </select>
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <ChevronDown size={16} className="text-gray-400 dark:text-gray-500" />
+                </div>
               </div>
             </div>
           )}
@@ -325,7 +331,7 @@ const Demandes = () => {
         )}
 
         {/* Requests Table */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 animate-slide-in overflow-x-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 animate-slide-in overflow-x-auto max-h-[400px] overflow-y-auto">
           {filteredRequests.length === 0 ? (
             <div className="p-6 text-center">
               {requests.filter((req) => (showArchived ? req.feedback : !req.feedback)).length === 0 ? (
@@ -338,7 +344,7 @@ const Demandes = () => {
                   {!showArchived && (
                     <Link
                       to="/client/nouvelle-demande"
-                      className="inline-flex items-center px-4 py-2 rounded-lg bg-green-600 dark:bg-green-700 text-white text-sm font-medium hover:bg-green-700 dark:hover:bg-green-800 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white text-sm font-medium hover:from-green-600 hover:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
                     >
                       Créer une demande
                     </Link>

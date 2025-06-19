@@ -40,9 +40,9 @@ const DetailDemande = () => {
         const data = await getRequestById(id);
         console.log('Request data:', data);
         setRequest(data);
-        setEditTitle(data.title);
+        setEditTitle(data.title || '');
         setEditDescription(data.description || '');
-        setEditCategory(data.category);
+        setEditCategory(data.category || 'Autre');
       } catch (err) {
         console.error('Erreur lors de la récupération de la demande:', err);
         setError('Impossible de charger les détails de la demande');
@@ -63,11 +63,6 @@ const DetailDemande = () => {
       setSubmittingFeedback(true);
       const updatedRequest = await addFeedback(id, rating, feedbackComment);
       console.log('Updated request:', updatedRequest);
-      if (!updatedRequest.feedback) {
-        console.warn('Feedback absent dans la réponse API:', updatedRequest);
-      } else {
-        console.log('Feedback reçu:', updatedRequest.feedback);
-      }
       setRequest(updatedRequest);
       setSuccess('Évaluation envoyée avec succès. La demande a été archivée.');
       setShowFeedbackForm(false);
@@ -166,41 +161,43 @@ const DetailDemande = () => {
       <div className="max-w-5xl mx-auto">
         {/* Sticky Header */}
         <header className="sticky top-0 z-10 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-6 animate-fade-in">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => navigate('/client/demandes')}
-                className="inline-flex items-center px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                onClick={() => navigate('/client')}
+                className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
               >
-                <ArrowLeft size={18} className="mr-2" />
+                <ArrowLeft size={16} className="mr-2" />
                 Retour
               </button>
               {request.status !== 'resolue' && user.role !== 'admin' && request.status !== 'rejetee' && (
                 <button
                   onClick={() => setShowEditForm(true)}
-                  className="inline-flex items-center px-3 py-2 rounded-md bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white text-sm font-medium hover:from-blue-600 hover:to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
                 >
-                  <Pencil size={18} className="mr-2" />
+                  <Pencil size={16} className="mr-2" />
                   Modifier
                 </button>
               )}
             </div>
-            {request.status === 'resolue' && user.role !== 'admin' && (
-              request.feedback?.rating ? (
-                <span className="text-sm font-medium text-green-600 dark:text-green-400 flex items-center">
-                  <CheckCircle2 size={18} className="mr-2" />
-                  Merci pour votre évaluation
-                </span>
-              ) : (
-                <button
-                  onClick={() => setShowFeedbackForm(true)}
-                  className="inline-flex items-center px-3 py-2 rounded-md bg-green-600 dark:bg-green-700 text-white text-sm font-medium hover:bg-green-700 dark:hover:bg-green-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <Star size={18} className="mr-2" />
-                  Évaluer
-                </button>
-              )
-            )}
+            <div className="flex items-center justify-end">
+              {request.status === 'resolue' && user.role !== 'admin' && (
+                request.feedback?.rating ? (
+                  <span className="text-sm font-medium text-green-600 dark:text-green-400 flex items-center">
+                    <CheckCircle2 size={16} className="mr-2" />
+                    Merci pour votre évaluation
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setShowFeedbackForm(true)}
+                    className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white text-sm font-medium hover:from-green-600 hover:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                  >
+                    <Star size={16} className="mr-2" />
+                    Évaluer
+                  </button>
+                )
+              )}
+            </div>
           </div>
         </header>
 
@@ -240,46 +237,53 @@ const DetailDemande = () => {
             {showEditForm && user.role !== 'admin' && (
               <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-300 border border-blue-100 dark:border-blue-800 animate-fade-in">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Modifier la demande</h2>
-                <form onSubmit={handleSubmitEdit}>
-                  <div className="mb-6">
-                    <label htmlFor="editTitle" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <form onSubmit={handleSubmitEdit} className="space-y-4">
+                  <div className="relative group">
+                    <label htmlFor="editTitle" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                       Titre
                     </label>
                     <input
                       id="editTitle"
                       type="text"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200 text-base"
+                      className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg placeholder:font-light"
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
                       placeholder="Titre de la demande"
                       required
                     />
                   </div>
-                  <div className="mb-6">
-                    <label htmlFor="editCategory" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <div className="relative group">
+                    <label htmlFor="editCategory" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                       Catégorie
                     </label>
-                    <select
-                      id="editCategory"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200 text-base"
-                      value={editCategory}
-                      onChange={(e) => setEditCategory(e.target.value)}
-                      required
-                    >
-                      <option value="Technique">Technique</option>
-                      <option value="Administratif">Administratif</option>
-                      <option value="Financier">Financier</option>
-                      <option value="Autre">Autre</option>
-                    </select>
+                    <div className="relative">
+                      <select
+                        id="editCategory"
+                        className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg appearance-none cursor-pointer"
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                        required
+                      >
+                        <option value="Technique">Technique</option>
+                        <option value="Administratif">Administratif</option>
+                        <option value="Financier">Financier</option>
+                        <option value="Autre">Autre</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none top-1/2 transform -translate-y-1/2">
+                        <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
-                  <div className="mb-6">
-                    <label htmlFor="editDescription" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <div className="relative group">
+                    <label htmlFor="editDescription" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                       Description
                     </label>
                     <textarea
                       id="editDescription"
-                      rows={5}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-200 text-base resize-none"
+                      rows={4}
+                      className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg placeholder:font-light resize-none"
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
                       placeholder="Description de la demande..."
@@ -289,7 +293,7 @@ const DetailDemande = () => {
                     <button
                       type="submit"
                       disabled={submittingEdit}
-                      className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-800 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                      className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white text-sm font-medium hover:from-blue-600 hover:to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {submittingEdit ? 'Enregistrement...' : 'Enregistrer'}
                     </button>
@@ -299,7 +303,7 @@ const DetailDemande = () => {
                         setShowEditForm(false);
                         setError(null);
                       }}
-                      className="inline-flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-500"
+                      className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
                     >
                       Annuler
                     </button>
@@ -315,7 +319,7 @@ const DetailDemande = () => {
                 <StatusBadge status={request.status} />
                 <span className="bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full">{request.category}</span>
                 <span className="flex items-center">
-                  <Clock size={18} className="mr-2" />
+                  <Clock size={16} className="mr-2" />
                   {formatDate(request.created_at)}
                 </span>
               </div>
@@ -324,7 +328,7 @@ const DetailDemande = () => {
             {/* Details */}
             <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-300 animate-fade-in">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Détails</h2>
-              <p className="text-base text-gray-700 dark:text-gray-300 whitespace-pre-line">{request.description || 'Aucune description fournie'}</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{request.description || 'Aucune description fournie'}</p>
             </div>
 
             {/* Admin Comment */}
@@ -333,11 +337,11 @@ const DetailDemande = () => {
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Réponse de l'administrateur</h2>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-green-600 dark:bg-green-700 text-white flex items-center justify-center flex-shrink-0">
-                    <MessageSquare size={20} />
+                    <MessageSquare size={18} />
                   </div>
                   <div className="flex-1">
-                    <p className="text-base text-gray-700 dark:text-gray-300 whitespace-pre-line">{request.admin_comment}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{formatDate(request.updated_at)}</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{request.admin_comment}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{formatDate(request.updated_at)}</p>
                   </div>
                 </div>
               </div>
@@ -347,12 +351,12 @@ const DetailDemande = () => {
             {showFeedbackForm && !request.feedback?.rating && (
               <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-300 border border-green-100 dark:border-green-800 animate-fade-in">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Évaluer la résolution</h2>
-                <form onSubmit={handleSubmitFeedback}>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <form onSubmit={handleSubmitFeedback} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                       Satisfaction (1-5 étoiles)
                     </label>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       {[1, 2, 3, 4, 5].map((value) => (
                         <button
                           key={value}
@@ -363,19 +367,19 @@ const DetailDemande = () => {
                           }`}
                           aria-label={`${value} étoile${value > 1 ? 's' : ''}`}
                         >
-                          <Star size={28} fill={rating >= value ? 'currentColor' : 'none'} />
+                          <Star size={24} fill={rating >= value ? 'currentColor' : 'none'} />
                         </button>
                       ))}
                     </div>
                   </div>
-                  <div className="mb-6">
-                    <label htmlFor="comment" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <div className="relative group">
+                    <label htmlFor="comment" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                       Commentaire (optionnel)
                     </label>
                     <textarea
                       id="comment"
-                      rows={5}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 transition-colors duration-200 text-base resize-none"
+                      rows={4}
+                      className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg placeholder:font-light resize-none"
                       value={feedbackComment}
                       onChange={(e) => setFeedbackComment(e.target.value)}
                       placeholder="Votre retour sur la résolution..."
@@ -385,7 +389,7 @@ const DetailDemande = () => {
                     <button
                       type="submit"
                       disabled={submittingFeedback}
-                      className="inline-flex items-center px-4 py-2 rounded-lg bg-green-600 dark:bg-green-700 text-white text-sm font-medium hover:bg-green-700 dark:hover:bg-green-800 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+                      className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white text-sm font-medium hover:from-green-600 hover:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {submittingFeedback ? 'Envoi...' : 'Envoyer'}
                     </button>
@@ -395,7 +399,7 @@ const DetailDemande = () => {
                         setShowFeedbackForm(false);
                         setError(null);
                       }}
-                      className="inline-flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-500"
+                      className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
                     >
                       Annuler
                     </button>
@@ -440,20 +444,20 @@ const DetailDemande = () => {
           {request.status !== 'resolue' && user.role !== 'admin' && request.status !== 'rejetee' && (
             <button
               onClick={() => setShowEditForm(true)}
-              className="inline-flex items-center px-4 py-2 rounded-full bg-blue-600 dark:bg-blue-700 text-white text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-800 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-lg"
+              className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white text-sm font-medium hover:from-blue-600 hover:to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 shadow-lg"
               title="Modifier la demande"
             >
-              <Pencil size={18} className="mr-2" />
+              <Pencil size={16} className="mr-2" />
               Modifier
             </button>
           )}
           {request.status === 'resolue' && !request.feedback?.rating && user.role !== 'admin' && (
             <button
               onClick={() => setShowFeedbackForm(true)}
-              className="inline-flex items-center px-4 py-2 rounded-full bg-green-600 dark:bg-green-700 text-white text-sm font-medium hover:bg-green-700 dark:hover:bg-green-800 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 shadow-lg"
+              className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white text-sm font-medium hover:from-green-600 hover:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 shadow-lg"
               title="Évaluer la résolution"
             >
-              <Star size={18} className="mr-2" />
+              <Star size={16} className="mr-2" />
               Évaluer
             </button>
           )}

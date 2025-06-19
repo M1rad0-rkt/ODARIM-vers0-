@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, AlertCircle, CheckCircle, UserPlus, Mail, User } from 'lucide-react';
+import { AlertCircle, CheckCircle2, User, Mail, Eye, EyeOff, UserPlus } from 'lucide-react';
 
 const Inscription = () => {
   const [name, setName] = useState('');
@@ -8,31 +8,55 @@ const Inscription = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const [isLoading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const validatePassword = () => {
-    return password.length >= 6;
+    return password.trim().length >= 6;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+  const validateEmail = (email) => {
+    return /\S+@\S+\.\S+/.test(email.trim());
+  };
 
-    if (!name || !email || !password || !confirmPassword) {
-      setError('Veuillez remplir tous les champs');
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    setNotification(null);
+
+    // Trim des valeurs pour éviter les espaces
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    const trimmedConfirmPassword = confirmPassword.trim();
+
+    // Debug : afficher les valeurs soumises
+    console.log('Valeurs soumises:', {
+      name: trimmedName,
+      email: trimmedEmail,
+      password: trimmedPassword,
+      confirmPassword: trimmedConfirmPassword,
+      username: trimmedEmail,
+    });
+
+    if (!trimmedName || !trimmedEmail || !trimmedPassword || !trimmedConfirmPassword) {
+      setNotification({ type: 'error', message: 'Veuillez remplir tous les champs.' });
+      return;
+    }
+
+    if (!validateEmail(trimmedEmail)) {
+      setNotification({ type: 'error', message: 'Veuillez entrer une adresse email valide.' });
       return;
     }
 
     if (!validatePassword()) {
-      setError('Le mot de passe doit contenir au moins 6 caractères');
+      setNotification({ type: 'error', message: 'Le mot de passe doit contenir au moins 6 caractères.' });
       return;
     }
 
-    if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
+    if (trimmedPassword !== trimmedConfirmPassword) {
+      setNotification({ type: 'error', message: 'Les mots de passe ne correspondent pas.' });
       return;
     }
 
@@ -44,161 +68,173 @@ const Inscription = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name,
-          email,
-          password,
+          name: trimmedName,
+          email: trimmedEmail,
+          password: trimmedPassword,
+          username: trimmedEmail, // Compatible avec l'API
         }),
       });
 
       const data = await response.json();
 
+      // Debug : afficher la réponse API
+      console.log('Réponse API:', data);
+
       if (!response.ok) {
-        if (data && data.error) {
-          setError(data.error);
-        } else {
-          setError('Erreur lors de l\'inscription');
-        }
+        setNotification({
+          type: 'error',
+          message: data.detail || 'Erreur lors de la création de l’utilisateur.',
+        });
         return;
       }
 
-      navigate('/client');
-    } catch (err) {
-      setError('Erreur de communication avec le serveur');
+      setName('');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+      setNotification({ type: 'success', message: 'Compte créé avec succès ! Redirection...' });
+      setTimeout(() => navigate('/connexion'), 2000); // Rediriger vers connexion
+    } catch (error) {
+      console.error('Erreur réseau:', error);
+      setNotification({ type: 'error', message: 'Erreur de communication avec le serveur.' });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Fond animé */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gradient-to-br from-blue-400/20 to-purple-400/20 dark:from-blue-800/20 dark:to-purple-800/20 blur-3xl rounded-full animate-float"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-gradient-to-br from-purple-400/20 to-pink-400/20 dark:from-purple-800/20 dark:to-pink-800/20 blur-3xl rounded-full animate-float-delayed"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[30%] h-[30%] bg-gradient-to-br from-blue-300/10 to-purple-300/10 dark:from-blue-900/10 dark:to-purple-900/10 blur-2xl rounded-full animate-pulse-slow"></div>
-      </div>
-
-      {/* Conteneur en glassmorphism */}
-      <div className="w-full max-w-md bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-gray-200/40 dark:border-gray-700/40 transition-all duration-500">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-100 to-blue-50 dark:from-gray-900 dark:to-blue-900/50 p-6">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800/95 rounded-2xl shadow-2xl p-8 transition-all duration-500 hover:shadow-3xl animate-fade-in">
         <div className="text-center mb-8">
-          {/* Icône animée */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-5">
             <div className="relative group">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-full flex items-center justify-center transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
-                <UserPlus size={32} className="text-blue-600 dark:text-blue-400" />
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12">
+                <UserPlus size={32} className="text-white" />
               </div>
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-200/30 to-purple-200/30 dark:from-blue-800/30 dark:to-purple-800/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400/20 to-green-400/20 opacity-0 group-hover:opacity-20 transition-all duration-300"></div>
             </div>
           </div>
-          {/* Titre avec gradient animé */}
-          <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 animate-gradient-text">
-            Inscription
-          </h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Créez votre compte SatisGest</p>
+          <h2 className="text-3xl font-bold text-gray-700 dark:text-gray-100">Inscription</h2>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Créez un nouveau compte SatisGest</p>
         </div>
 
-        {/* Message d'erreur avec animation */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-100/90 dark:bg-red-900/90 text-red-600 dark:text-red-300 rounded-xl flex items-center animate-slide-in">
-            <AlertCircle size={20} className="mr-2 flex-shrink-0" />
-            <span>{error}</span>
+        {notification && (
+          <div className={`mb-6 p-4 rounded-lg flex items-center animate-slide-in ${notification.type === 'success' ? 'bg-green-50 dark:bg-green-900/60 text-green-600 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/60 text-red-600 dark:text-red-300'}`}>
+            {notification.type === 'success' ? <CheckCircle2 size={20} className="mr-2 animate-pulse" /> : <AlertCircle size={20} className="mr-2" />}
+            <span>{notification.message}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Champ Nom */}
+        {isLoading && (
+          <div className="flex items-center justify-center mb-6 space-x-2 text-gray-600 dark:text-gray-300">
+            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm font-medium">Chargement...</span>
+          </div>
+        )}
+
+        <form onSubmit={handleCreateUser} className="space-y-6">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Nom complet
             </label>
             <div className="relative">
               <input
                 id="name"
+                name="name"
                 type="text"
-                className="w-full px-4 py-3 pl-10 border border-gray-200 dark:border-gray-600 rounded-xl bg-white/60 dark:bg-gray-700/60 focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="John Doe"
+                placeholder="Votre nom complet"
+                className="block w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 required
               />
               <User size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             </div>
           </div>
 
-          {/* Champ Email */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Adresse email
             </label>
             <div className="relative">
               <input
                 id="email"
+                name="email"
                 type="email"
-                className="w-full px-4 py-3 pl-10 border border-gray-200 dark:border-gray-600 rounded-xl bg-white/60 dark:bg-gray-700/60 focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="exemple@domaine.com"
+                placeholder="exemple@example.com"
+                className="block w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 required
               />
               <Mail size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             </div>
           </div>
 
-          {/* Champ Mot de passe */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Mot de passe
             </label>
             <div className="relative">
               <input
                 id="password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
-                className="w-full px-4 py-3 pr-12 border border-gray-200 dark:border-gray-600 rounded-xl bg-white/60 dark:bg-gray-700/60 focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Créez un mot de passe"
+                className="block w-full pl-4 pr-12 py-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 required
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
                 onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors duration-200"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
-            <div className="mt-1.5 text-xs flex items-center space-x-2">
-              <span className={password.length >= 6 ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
-                {password.length >= 6 ? <CheckCircle size={14} className="inline mr-1" /> : <AlertCircle size={14} className="inline mr-1" />}
+            <div className="mt-1 text-xs flex items-center space-x-2">
+              <span className={validatePassword() ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
+                {validatePassword() ? <CheckCircle2 size={14} className="inline mr-1" /> : <AlertCircle size={14} className="inline mr-1" />}
                 Au moins 6 caractères
               </span>
             </div>
           </div>
 
-          {/* Champ Confirmation */}
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Confirmer le mot de passe
             </label>
-            <input
-              id="confirmPassword"
-              type={showPassword ? 'text' : 'password'}
-              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white/60 dark:bg-gray-700/60 focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirmez votre mot de passe"
-              required
-            />
+            <div className="relative">
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirmez le mot de passe"
+                className="block w-full pl-4 pr-12 py-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors duration-200"
+              >
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
             {password && confirmPassword && (
-              <div className="mt-1.5 text-xs">
+              <div className="mt-1 text-xs">
                 {password === confirmPassword ? (
                   <span className="text-green-600 dark:text-green-400 flex items-center space-x-1">
-                    <CheckCircle size={14} className="flex-shrink-0" />
+                    <CheckCircle2 size={14} className="inline mr-1" />
                     <span>Les mots de passe correspondent</span>
                   </span>
                 ) : (
                   <span className="text-red-600 dark:text-red-400 flex items-center space-x-1">
-                    <AlertCircle size={14} className="flex-shrink-0" />
+                    <AlertCircle size={14} className="inline mr-1" />
                     <span>Les mots de passe ne correspondent pas</span>
                   </span>
                 )}
@@ -206,33 +242,36 @@ const Inscription = () => {
             )}
           </div>
 
-          {/* Bouton */}
-          <button
-            type="submit"
-            className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-500 dark:from-blue-600 dark:to-purple-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-purple-600 dark:hover:from-blue-700 dark:hover:to-purple-700 focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
-            disabled={loading}
-          >
-            {loading ? 'Inscription en cours...' : 'S\'inscrire'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-green-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-green-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Inscription...' : 'S\'inscrire'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setName('');
+                setEmail('');
+                setPassword('');
+                setConfirmPassword('');
+                setNotification(null);
+              }}
+              className="flex-1 py-3 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-600 dark:to-gray-700 text-gray-700 dark:text-gray-200 rounded-lg font-medium hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-500 dark:hover:to-gray-600 focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all duration-300"
+            >
+              Réinitialiser
+            </button>
+          </div>
         </form>
 
-        {/* Lien de connexion */}
-        <div className="mt-8 text-center">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200 dark:border-gray-600"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-3 bg-white/95 dark:bg-gray-800/95 text-gray-500 dark:text-gray-400">ou</span>
-            </div>
-          </div>
-          <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
-            Vous avez déjà un compte ?{' '}
-            <Link to="/connexion" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors duration-300">
-              Connectez-vous
-            </Link>
-          </p>
-        </div>
+        <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+          Vous avez déjà un compte ?{' '}
+          <Link to="/connexion" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors duration-200">
+            Connectez-vous
+          </Link>
+        </p>
       </div>
     </div>
   );

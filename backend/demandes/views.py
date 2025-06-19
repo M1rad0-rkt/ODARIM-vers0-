@@ -48,6 +48,7 @@ class UserProfileView(APIView):
             "id": user.id,
             "email": user.email,
             "username": user.username,
+            "first_name": user.first_name or "",
             "role": user.role,
             "created_at": user.date_joined
         })
@@ -55,23 +56,23 @@ class UserProfileView(APIView):
     def put(self, request):
         user = request.user
         data = request.data
-
-        # Récupérer les champs à mettre à jour
         new_email = data.get('email')
         new_username = data.get('username')
-
-        # Vérifications simples (tu peux améliorer avec un Serializer si besoin)
+        new_first_name = data.get('first_name', '')
         if not new_email or not new_username:
             return Response({"error": "Les champs email et username sont requis."}, status=status.HTTP_400_BAD_REQUEST)
-
         user.email = new_email
         user.username = new_username
-        user.save()
-
+        user.first_name = new_first_name
+        try:
+            user.save()
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({
             "id": user.id,
             "email": user.email,
             "username": user.username,
+            "first_name": user.first_name,
             "role": user.role,
             "created_at": user.date_joined
         })

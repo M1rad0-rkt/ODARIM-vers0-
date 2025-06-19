@@ -1,23 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle2, User, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
-import { fetchProfile, updateProfile, changePassword } from '../../api/requests';
+import { AlertCircle, CheckCircle2, User, Mail, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
+
+async function makeAuthenticatedRequest(url, options = {}) {
+  let accessToken = localStorage.getItem('access_token');
+
+  if (!accessToken) {
+    throw new Error('Aucun token d’authentification trouvé.');
+  }
+
+  options.headers = {
+    ...options.headers,
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+  };
+
+  let response = await fetch(url, options);
+
+  if (response.status === 401) {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) {
+      throw new Error('Aucun token de rafraîchissement disponible.');
+    }
+
+    try {
+      const refreshResponse = await fetch('http://localhost:8000/api/token/refresh/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
+
+      if (!refreshResponse.ok) {
+        throw new Error('Échec du rafraîchissement du token.');
+      }
+
+      const refreshData = await refreshResponse.json();
+      accessToken = refreshData.access;
+      localStorage.setItem('access_token', accessToken);
+
+      options.headers.Authorization = `Bearer ${accessToken}`;
+      response = await fetch(url, options);
+    } catch (refreshError) {
+      console.error('Erreur lors du rafraîchissement du token:', refreshError);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      window.location.href = '/connexion';
+      throw refreshError;
+    }
+  }
+
+  return response;
+}
 
 const Profil = () => {
+  const [first_name, setFirstName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [createdAt, setCreatedAt] = useState('');
+  const [created_at, setCreatedAt] = useState('');
   const [role, setRole] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState('');
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -27,307 +74,354 @@ const Profil = () => {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const data = await fetchProfile();
-        if (!data || !data.username) throw new Error("Impossible de charger le profil.");
-        setUsername(data.username);
+        const response = await makeAuthenticatedRequest('http://localhost:8000/api/users/me/', {
+          method: 'GET',
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.username) {
+          throw new Error(data.detail || 'Impossible de charger le profil.');
+        }
+        setFirstName(data.first_name || '');
+        setUsername(data.email);
         setEmail(data.email);
         setCreatedAt(data.created_at);
         setRole(data.role === 'admin' ? 'Administrateur' : 'Client');
       } catch (err) {
-        setError(err.message || "Erreur inconnue.");
-        if (err.message?.toLowerCase().includes("reconnecter")) {
+        console.error('Profile Fetch Error:', err);
+        setNotification({ type: 'error', message: err.message || 'Erreur inconnue.' });
+        if (err.message?.toLowerCase().includes('reconnecter')) {
           navigate('/connexion');
         }
+      } finally {
+        setLoading(false);
       }
     };
     loadProfile();
   }, [navigate]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
-
-    try {
-      await updateProfile(username, email);
-      setSuccess('Vos informations ont été mises à jour avec succès.');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError(err.message || "La mise à jour a échoué.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const validatePassword = (password) => {
     const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     return regex.test(password);
   };
 
+  const validateMinPassword = (password) => {
+    return password.length >= 6;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setNotification(null);
+    setLoading(true);
+
+    if (!email || !username) {
+      setNotification({ type: 'error', message: 'Les champs email et nom d\'utilisateur sont requis.' });
+      setLoading(false);
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setNotification({ type: 'error', message: 'Veuillez entrer une adresse email valide.' });
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await makeAuthenticatedRequest('http://localhost:8000/api/users/me/', {
+        method: 'PUT',
+        body: JSON.stringify({ first_name, email, username: email }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || 'La mise à jour a échoué.');
+      }
+      setNotification({ type: 'success', message: 'Vos informations ont été mises à jour avec succès.' });
+      setTimeout(() => setNotification(null), 3000);
+    } catch (err) {
+      console.error('Profile Update Error:', err);
+      setNotification({ type: 'error', message: err.message || 'La mise à jour a échoué.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    setPasswordError('');
-    setPasswordSuccess('');
+    setNotification(null);
     setPasswordLoading(true);
 
     if (!currentPassword) {
-      setPasswordError('Veuillez entrer votre mot de passe actuel.');
+      setNotification({ type: 'error', message: 'Veuillez entrer votre mot de passe actuel.' });
       setPasswordLoading(false);
       return;
     }
     if (!validatePassword(newPassword)) {
-      setPasswordError(
-        'Le nouveau mot de passe doit contenir au moins 8 caractères, incluant une majuscule, une minuscule, un chiffre et un caractère spécial.'
-      );
+      setNotification({
+        type: 'error',
+        message: 'Le nouveau mot de passe doit contenir au moins 8 caractères, incluant une majuscule, une minuscule, un chiffre et un caractère spécial.',
+      });
       setPasswordLoading(false);
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('Les mots de passe ne correspondent pas.');
+      setNotification({ type: 'error', message: 'Les mots de passe ne correspondent pas.' });
       setPasswordLoading(false);
       return;
     }
 
     try {
-      await changePassword(currentPassword, newPassword);
-      setPasswordSuccess('Mot de passe changé avec succès.');
-      setTimeout(() => setPasswordSuccess(''), 3000);
+      const response = await makeAuthenticatedRequest('http://localhost:8000/api/users/me/password/', {
+        method: 'PATCH',
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || 'Le changement de mot de passe a échoué.');
+      }
+      setNotification({ type: 'success', message: 'Mot de passe changé avec succès.' });
+      setTimeout(() => setNotification(null), 3000);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setShowPasswordForm(false);
     } catch (err) {
-      setPasswordError(err.message || "Le changement de mot de passe a échoué.");
+      console.error('Password Change Error:', err);
+      setNotification({ type: 'error', message: err.message || 'Le changement de mot de passe a échoué.' });
     } finally {
       setPasswordLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 p-6 animate-slide-in">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
-            Mon Profil
-          </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Gérez vos informations personnelles et sécurisez votre compte
-          </p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 sm:p-8 space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="flex justify-center">
+            <div className="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105">
+              <User size={30} className="text-white" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Mon Profil</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Gérez vos informations personnelles et sécurisez votre compte</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Formulaire de modification */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow duration-300 animate-slide-in">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Informations Personnelles
-              </h2>
+        {/* Notification */}
+        {notification && (
+          <div className={`p-4 rounded-lg flex items-center space-x-2 transition-all duration-300 ${
+            notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}>
+            {notification.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+            <span className="text-sm">{notification.message}</span>
+          </div>
+        )}
 
-              {error && (
-                <div className="mb-4 p-4 rounded-lg bg-red-50 dark:bg-red-900/50 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-700 flex items-start transition-opacity duration-300">
-                  <AlertCircle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">{error}</span>
-                </div>
-              )}
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-400">
+            <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm">Chargement...</span>
+          </div>
+        )}
 
-              {success && (
-                <div className="mb-4 p-4 rounded-lg bg-green-50 dark:bg-green-900/50 text-green-600 dark:text-green-300 border border-green-200 dark:border-green-700 flex items-start transition-opacity duration-300">
-                  <CheckCircle2 size={16} className="mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">{success}</span>
-                </div>
-              )}
+        {/* Profile Form */}
+        <div className="bg-white dark:bg-gray-700/50 rounded-lg p-6 border border-gray-200 dark:border-gray-600">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Informations Personnelles</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="nom" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Nom complet
+              </label>
+              <div className="relative mt-1">
+                <input
+                  id="nom"
+                  type="text"
+                  className="w-full px-4 py-2.5 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  value={first_name}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Votre nom"
+                />
+                <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+              </div>
+            </div>
 
-              <form onSubmit={handleSubmit}>
-                <div className="mb-4">
-                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Nom d'utilisateur
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Adresse email
+              </label>
+              <div className="relative mt-1">
+                <input
+                  id="email"
+                  type="email"
+                  className="w-full px-4 py-2.5 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="exemple@domaine.com"
+                  required
+                />
+                <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading}
+            >
+              {loading ? 'Mise à jour...' : 'Enregistrer les modifications'}
+            </button>
+          </form>
+        </div>
+
+        {/* Password Form */}
+        <div className="bg-white dark:bg-gray-700/50 rounded-lg p-6 border border-gray-200 dark:border-gray-600">
+          <button
+            onClick={() => setShowPasswordForm(!showPasswordForm)}
+            className="flex items-center text-indigo-600 dark:text-indigo-400 font-medium hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors duration-200"
+          >
+            Changer le mot de passe
+            {showPasswordForm ? <ChevronUp size={20} className="ml-2" /> : <ChevronDown size={20} className="ml-2" />}
+          </button>
+
+          {showPasswordForm && (
+            <div className="mt-4 space-y-4 animate-slide-down">
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <div>
+                  <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Mot de passe actuel
                   </label>
-                  <input
-                    id="username"
-                    type="text"
-                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 transition-colors duration-200 text-sm"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                  />
+                  <div className="relative mt-1">
+                    <input
+                      id="currentPassword"
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      className="w-full px-4 py-2.5 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Mot de passe actuel"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-indigo-500 transition-colors duration-200"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    >
+                      {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="mb-6">
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Adresse email
+                <div>
+                  <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Nouveau mot de passe
                   </label>
-                  <input
-                    id="email"
-                    type="email"
-                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 transition-colors duration-200 text-sm"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
+                  <div className="relative mt-1">
+                    <input
+                      id="newPassword"
+                      type={showNewPassword ? 'text' : 'password'}
+                      className="w-full px-4 py-2.5 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Nouveau mot de passe"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-indigo-500 transition-colors duration-200"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                    >
+                      {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    <span className={validateMinPassword(newPassword) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                      {validateMinPassword(newPassword) ? <CheckCircle2 size={14} className="inline mr-1" /> : <AlertCircle size={14} className="inline mr-1" />}
+                      Au moins 6 caractères
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="inline-flex items-center px-4 py-2 rounded-lg bg-green-600 dark:bg-green-700 text-white text-sm font-medium hover:bg-green-700 dark:hover:bg-green-800 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
-                    disabled={loading}
-                  >
-                    {loading ? 'Mise à jour...' : 'Enregistrer les modifications'}
-                  </button>
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Confirmer le mot de passe
+                  </label>
+                  <div className="relative mt-1">
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      className="w-full px-4 py-2.5 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirmez le mot de passe"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-indigo-500 transition-colors duration-200"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  {newPassword && confirmPassword && (
+                    <div className="mt-1 text-xs">
+                      {newPassword === confirmPassword ? (
+                        <span className="text-green-600 dark:text-green-400 flex items-center">
+                          <CheckCircle2 size={14} className="mr-1" />
+                          Les mots de passe correspondent
+                        </span>
+                      ) : (
+                        <span className="text-red-600 dark:text-red-400 flex items-center">
+                          <AlertCircle size={14} className="mr-1" />
+                          Les mots de passe ne correspondent pas
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={passwordLoading}
+                >
+                  {passwordLoading ? 'Changement...' : 'Changer le mot de passe'}
+                </button>
               </form>
             </div>
+          )}
+        </div>
 
-            {/* Formulaire de changement de mot de passe */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow duration-300 animate-slide-in">
-              <button
-                onClick={() => setShowPasswordForm(!showPasswordForm)}
-                className="flex items-center text-lg font-semibold text-green-600 dark:text-green-400 mb-4 hover:text-green-700 dark:hover:text-green-300 transition-colors duration-200"
-              >
-                Changer le mot de passe
-                {showPasswordForm ? (
-                  <ChevronUp size={20} className="ml-2" />
-                ) : (
-                  <ChevronDown size={20} className="ml-2" />
-                )}
-              </button>
-
-              {showPasswordForm && (
-                <div className="animate-slide-in">
-                  {passwordError && (
-                    <div className="mb-4 p-4 rounded-lg bg-red-50 dark:bg-red-900/50 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-700 flex items-start transition-opacity duration-300">
-                      <AlertCircle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">{passwordError}</span>
-                    </div>
-                  )}
-
-                  {passwordSuccess && (
-                    <div className="mb-4 p-4 rounded-lg bg-green-50 dark:bg-green-900/50 text-green-600 dark:text-green-300 border border-green-200 dark:border-green-700 flex items-start transition-opacity duration-300">
-                      <CheckCircle2 size={16} className="mr-2 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">{passwordSuccess}</span>
-                    </div>
-                  )}
-
-                  <form onSubmit={handlePasswordSubmit}>
-                    <div className="mb-4 relative">
-                      <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Mot de passe actuel
-                      </label>
-                      <div className="relative">
-                        <input
-                          id="currentPassword"
-                          type={showCurrentPassword ? 'text' : 'password'}
-                          className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 transition-colors duration-200 text-sm pr-10"
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
-                          aria-label={showCurrentPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                        >
-                          {showCurrentPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mb-4 relative">
-                      <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Nouveau mot de passe
-                      </label>
-                      <div className="relative">
-                        <input
-                          id="newPassword"
-                          type={showNewPassword ? 'text' : 'password'}
-                          className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 transition-colors duration-200 text-sm pr-10"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowNewPassword(!showNewPassword)}
-                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
-                          aria-label={showNewPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                        >
-                          {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mb-6 relative">
-                      <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Confirmer le nouveau mot de passe
-                      </label>
-                      <div className="relative">
-                        <input
-                          id="confirmPassword"
-                          type={showConfirmPassword ? 'text' : 'password'}
-                          className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 transition-colors duration-200 text-sm pr-10"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors duration-200"
-                          aria-label={showConfirmPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                        >
-                          {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-3">
-                      <button
-                        type="submit"
-                        className="inline-flex items-center px-4 py-2 rounded-lg bg-green-600 dark:bg-green-700 text-white text-sm font-medium hover:bg-green-700 dark:hover:bg-green-800 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
-                        disabled={passwordLoading}
-                      >
-                        {passwordLoading ? 'Changement...' : 'Changer le mot de passe'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowPasswordForm(false)}
-                        className="inline-flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-transform duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-500"
-                      >
-                        Annuler
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Résumé utilisateur */}
-          <div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow duration-300 sticky top-6 animate-slide-in text-center">
-              <div className="mb-4">
-                <div className="w-24 h-24 rounded-full bg-green-600/10 dark:bg-green-700/10 text-green-600 dark:text-green-400 flex items-center justify-center mx-auto">
-                  <User size={48} />
-                </div>
+        {/* Account Summary */}
+        <div className="bg-white dark:bg-gray-700/50 rounded-lg p-6 border border-gray-200 dark:border-gray-600">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Résumé du compte</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex items-start space-x-3">
+              <User size={20} className="text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-1" />
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Rôle</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{role}</p>
               </div>
-
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{username}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{email}</p>
-
-              <div className="border-t border-gray-200 dark:border-gray-600 pt-4 mt-4">
-                <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
-                  <p>
-                    Compte créé le :{' '}
-                    {createdAt && new Date(createdAt).toLocaleDateString('fr-FR')}
-                  </p>
-                  <p>Type de compte : {role}</p>
-                </div>
+            </div>
+            <div className="flex items-start space-x-3">
+              <Mail size={20} className="text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-1" />
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Date d'inscription</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {created_at ? new Date(created_at).toLocaleDateString('fr-FR') : '-'}
+                </p>
               </div>
             </div>
           </div>
         </div>
+
+        <style jsx>{`
+          @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-slide-down {
+            animation: slideDown 0.3s ease-out forwards;
+          }
+        `}</style>
       </div>
     </div>
   );

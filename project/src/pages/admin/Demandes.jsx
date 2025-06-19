@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllRequests } from '../../api/requests';
 import StatusBadge from '../../components/StatusBadge';
-import { Search, AlertTriangle, Filter, ChevronDown, ChevronUp, Eye, Lock } from 'lucide-react';
+import { Search, AlertTriangle, Filter, ChevronDown, ChevronUp, Eye, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const formatDate = (dateString) => {
   const date = new Date(dateString);
@@ -22,8 +22,10 @@ const Demandes = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('active'); // active or old
+  const [viewMode, setViewMode] = useState('active');
   const [expandedRequest, setExpandedRequest] = useState(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const requestsPerPage = 6; // 3 columns x 2 rows
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -81,6 +83,18 @@ const Demandes = () => {
     setExpandedRequest(expandedRequest === id ? null : id);
   };
 
+  const totalPages = Math.ceil(filteredRequests.length / requestsPerPage);
+  const startIndex = currentPage * requestsPerPage;
+  const visibleRequests = filteredRequests.slice(startIndex, startIndex + requestsPerPage);
+
+  const handlePrevPage = () => {
+    setCurrentPage((prev) => (prev === 0 ? totalPages - 1 : prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => (prev === totalPages - 1 ? 0 : prev + 1));
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-48">
@@ -118,7 +132,7 @@ const Demandes = () => {
               <button
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   viewMode === 'active'
-                    ? 'bg-green-600 text-white'
+                    ? 'bg-indigo-600 text-white'
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
                 onClick={() => setViewMode('active')}
@@ -128,7 +142,7 @@ const Demandes = () => {
               <button
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   viewMode === 'old'
-                    ? 'bg-green-600 text-white'
+                    ? 'bg-indigo-600 text-white'
                     : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
                 onClick={() => setViewMode('old')}
@@ -143,7 +157,7 @@ const Demandes = () => {
                 <input
                   type="text"
                   placeholder="Rechercher par titre ou description..."
-                  className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -152,7 +166,7 @@ const Demandes = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="all">Tous Statuts</option>
                 <option value="en_attente">En attente</option>
@@ -163,7 +177,7 @@ const Demandes = () => {
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="all">Toutes Catégories</option>
                 {getUniqueCategories()
@@ -182,79 +196,103 @@ const Demandes = () => {
             <p className="text-sm text-gray-500 dark:text-gray-400">Aucune demande trouvée.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredRequests.map((request) => {
-              const isOld = request.is_updated || ['resolue', 'rejetee'].includes(request.status);
-              return (
-                <div
-                  key={request.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-300"
-                >
-                  <div className="p-4">
-                    {/* Header */}
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">
-                        {request.title}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        {isOld && (
-                          <Lock size={14} className="text-gray-400 dark:text-gray-500" title="Demande non modifiable" />
-                        )}
-                        <button
-                          onClick={() => handleViewRequest(request.id, isOld)}
-                          className={`p-1 rounded-full ${
-                            isOld
-                              ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                              : 'text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30'
-                          }`}
-                          title={isOld ? 'Demande non modifiable' : 'Voir les détails'}
-                          disabled={isOld}
-                        >
-                          <Eye size={16} />
-                        </button>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {visibleRequests.map((request) => {
+                const isOld = request.is_updated || ['resolue', 'rejetee'].includes(request.status);
+                return (
+                  <div
+                    key={request.id}
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-300"
+                  >
+                    <div className="p-4">
+                      {/* Header */}
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">
+                          {request.title}
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          {isOld && (
+                            <Lock size={14} className="text-gray-400 dark:text-gray-500" title="Demande non modifiable" />
+                          )}
+                          <button
+                            onClick={() => handleViewRequest(request.id, isOld)}
+                            className={`p-1 rounded-full ${
+                              isOld
+                                ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                                : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+                            }`}
+                            title={isOld ? 'Demande non modifiable' : 'Voir les détails'}
+                            disabled={isOld}
+                          >
+                            <Eye size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Metadata */}
+                      <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                        <p>ID: {request.id}</p>
+                        <p>Client: {request.user_name || 'N/A'}</p>
+                        <p>Date: {formatDate(request.created_at)}</p>
+                      </div>
+
+                      {/* Status */}
+                      <div className="mt-3">
+                        <StatusBadge status={request.status} />
                       </div>
                     </div>
 
-                    {/* Metadata */}
-                    <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                      <p>ID: {request.id}</p>
-                      <p>Client: {request.user_name || 'N/A'}</p>
-                      <p>Date: {formatDate(request.created_at)}</p>
-                    </div>
-
-                    {/* Status */}
-                    <div className="mt-3">
-                      <StatusBadge status={request.status} />
-                    </div>
-                  </div>
-
-                  {/* Expandable Details */}
-                  <div className="border-t border-gray-200 dark:border-gray-700">
-                    <button
-                      className="w-full flex justify-between items-center px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      onClick={() => toggleRequest(request.id)}
-                    >
-                      <span>Détails</span>
-                      {expandedRequest === request.id ? (
-                        <ChevronUp size={16} />
-                      ) : (
-                        <ChevronDown size={16} />
+                    {/* Expandable Details */}
+                    <div className="border-t border-gray-200 dark:border-gray-700">
+                      <button
+                        className="w-full flex justify-between items-center px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        onClick={() => toggleRequest(request.id)}
+                      >
+                        <span>Détails</span>
+                        {expandedRequest === request.id ? (
+                          <ChevronUp size={16} />
+                        ) : (
+                          <ChevronDown size={16} />
+                        )}
+                      </button>
+                      {expandedRequest === request.id && (
+                        <div className="px-4 pb-4 text-sm text-gray-700 dark:text-gray-300">
+                          <p className="line-clamp-3">{request.description || 'Aucune description'}</p>
+                          {request.admin_comment && (
+                            <p className="mt-2 text-gray-600 dark:text-gray-400">
+                              <strong>Commentaire admin :</strong> {request.admin_comment}
+                            </p>
+                          )}
+                        </div>
                       )}
-                    </button>
-                    {expandedRequest === request.id && (
-                      <div className="px-4 pb-4 text-sm text-gray-700 dark:text-gray-300">
-                        <p className="line-clamp-3">{request.description || 'Aucune description'}</p>
-                        {request.admin_comment && (
-                          <p className="mt-2 text-gray-600 dark:text-gray-400">
-                            <strong>Commentaire admin :</strong> {request.admin_comment}
-                          </p>
-                        )}
-                      </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-4 mt-6">
+                <button
+                  onClick={handlePrevPage}
+                  className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  disabled={totalPages <= 1}
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Page {currentPage + 1} sur {totalPages}
+                </span>
+                <button
+                  onClick={handleNextPage}
+                  className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  disabled={totalPages <= 1}
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
