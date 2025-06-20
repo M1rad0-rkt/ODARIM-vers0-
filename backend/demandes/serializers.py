@@ -59,11 +59,12 @@ class FeedbackSerializer(serializers.ModelSerializer):
 
 class RequestSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
+    first_name = serializers.CharField(source='user.first_name')
     feedback = FeedbackSerializer(read_only=True, allow_null=True)  # Ajouter explicitement
 
     class Meta:
         model = Request
-        fields = ['id', 'user', 'user_name', 'title', 'description', 'category', 'status', 'admin_comment', 'created_at', 'updated_at', 'feedback']
+        fields = ['id', 'user', 'user_name', 'title','first_name', 'description', 'category', 'status', 'admin_comment', 'created_at', 'updated_at', 'feedback']
         read_only_fields = ['user', 'status', 'admin_comment', 'created_at', 'updated_at', 'feedback']
 
     def get_user_name(self, obj):

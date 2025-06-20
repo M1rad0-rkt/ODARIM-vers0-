@@ -17,6 +17,8 @@ const Demandes = () => {
   const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,13 +27,16 @@ const Demandes = () => {
   const [viewMode, setViewMode] = useState('active');
   const [expandedRequest, setExpandedRequest] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const requestsPerPage = 6; // 3 columns x 2 rows
+  const requestsPerPage = 6;
 
   useEffect(() => {
     const fetchRequests = async () => {
       try {
         const data = await getAllRequests();
+        console.log('Données brutes de getAllRequests:', data);
         setRequests(data);
+
+        // Initialiser les demandes filtrées par défaut (actives)
         setFilteredRequests(data.filter((req) => !req.is_updated && !['resolue', 'rejetee'].includes(req.status)));
       } catch (err) {
         console.error('Erreur lors de la récupération des demandes:', err);
@@ -44,31 +49,98 @@ const Demandes = () => {
   }, []);
 
   useEffect(() => {
-    let result = [...requests];
-    if (viewMode === 'active') {
-      result = result.filter((req) => !req.is_updated && !['resolue', 'rejetee'].includes(req.status));
-    } else {
-      result = result.filter((req) => req.is_updated || ['resolue', 'rejetee'].includes(req.status));
-    }
-    if (statusFilter !== 'all') {
-      result = result.filter((request) => request.status === statusFilter);
-    }
-    if (categoryFilter !== 'all') {
-      result = result.filter((request) => request.category === categoryFilter);
-    }
-    if (searchTerm) {
+    // Mettre à jour la liste des clients en fonction de viewMode et searchTerm
+    const updateClients = () => {
+      let filteredData = [...requests];
       const lowerSearch = searchTerm.toLowerCase();
-      result = result.filter(
-        (r) =>
-          r.title.toLowerCase().includes(lowerSearch) ||
-          r.description.toLowerCase().includes(lowerSearch)
-      );
+
+      // Filtrer les demandes pour obtenir les clients correspondants
+      if (searchTerm) {
+        filteredData = filteredData.filter(
+          (req) =>
+            (req.first_name && req.first_name.toLowerCase().includes(lowerSearch)) ||
+            (req.user_name && req.user_name.toLowerCase().includes(lowerSearch))
+        );
+      }
+
+      const uniqueClients = [...new Set(filteredData.map(req => req.first_name || req.user_name || 'N/A'))]
+        .map(name => ({
+          name,
+          requests: filteredData.filter(req => (req.first_name || req.user_name || 'N/A') === name),
+        }))
+        .filter(client => {
+          if (viewMode === 'active') {
+            return client.requests.some(req => !req.is_updated && !['resolue', 'rejetee'].includes(req.status));
+          }
+          return client.requests.some(req => req.is_updated || ['resolue', 'rejetee'].includes(req.status));
+        });
+
+      setClients(uniqueClients);
+
+      // Réinitialiser le client sélectionné si le client n'a plus de demandes
+      if (selectedClient && !uniqueClients.some(client => client.name === selectedClient)) {
+        setSelectedClient(null);
+      }
+    };
+
+    updateClients();
+  }, [viewMode, requests, searchTerm]);
+
+  useEffect(() => {
+    if (selectedClient) {
+      // Filtrer les demandes du client sélectionné
+      let result = requests.filter(req => (req.first_name || req.user_name || 'N/A') === selectedClient);
+      if (viewMode === 'active') {
+        result = result.filter((req) => !req.is_updated && !['resolue', 'rejetee'].includes(req.status));
+      } else {
+        result = result.filter((req) => req.is_updated || ['resolue', 'rejetee'].includes(req.status));
+      }
+      if (statusFilter !== 'all') {
+        result = result.filter((request) => request.status === statusFilter);
+      }
+      if (categoryFilter !== 'all') {
+        result = result.filter((req) => req.category === categoryFilter);
+      }
+      if (searchTerm) {
+        const lowerSearch = searchTerm.toLowerCase();
+        result = result.filter(
+          (r) =>
+            r.title?.toLowerCase().includes(lowerSearch) ||
+            r.description?.toLowerCase().includes(lowerSearch)
+        );
+      }
+      setFilteredRequests(result);
+    } else {
+      // Filtrer toutes les demandes (quand aucun client n'est sélectionné)
+      let result = [...requests];
+      if (viewMode === 'active') {
+        result = result.filter((req) => !req.is_updated && !['resolue'].includes(req.status));
+      } else {
+        result = result.filter((req) => req.is_updated || ['resolue', 'rejetee'].includes(req.status));
+      }
+      if (statusFilter !== 'all') {
+        result = result.filter((request) => request.status === statusFilter.status);
+      }
+
+      if (categoryFilter !== 'all') {
+        result = result.filter((request) => request.category === categoryFilter);
+      }
+      if (searchTerm) {
+        const lowerSearch = searchTerm.toLowerCase();
+        result = result.filter(
+          (r) =>
+            r.title?.toLowerCase().includes(lowerSearch) ||
+            r.description?.toLowerCase().includes(lowerSearch) ||
+            (r.first_name && r.first_name.toLowerCase().includes(lowerSearch)) ||
+            (r.user_name && r.user_name.toLowerCase().includes(lowerSearch))
+        );
+      }
+      setFilteredRequests(result);
     }
-    setFilteredRequests(result);
-  }, [requests, searchTerm, statusFilter, categoryFilter, viewMode]);
+  }, [requests, searchTerm, statusFilter, categoryFilter, viewMode, selectedClient]);
 
   const getUniqueCategories = () => {
-    const categories = requests.map((req) => req.category);
+    const categories = requests.map((req) => req.category).filter(Boolean);
     return ['all', ...new Set(categories)];
   };
 
@@ -82,17 +154,19 @@ const Demandes = () => {
     setExpandedRequest(expandedRequest === id ? null : id);
   };
 
+  const handleClientSelect = (name) => {
+    setSelectedClient(name);
+    setCurrentPage(0);
+  };
+
+  const handleBackToClients = () => {
+    setSelectedClient(null);
+    setCurrentPage(0);
+  };
+
   const totalPages = Math.ceil(filteredRequests.length / requestsPerPage);
   const startIndex = currentPage * requestsPerPage;
   const visibleRequests = filteredRequests.slice(startIndex, startIndex + requestsPerPage);
-
-  const handlePrevPage = () => {
-    setCurrentPage((prev) => (prev === 0 ? totalPages - 1 : prev - 1));
-  };
-
-  const handleNextPage = () => {
-    setCurrentPage((prev) => (prev === totalPages - 1 ? 0 : prev + 1));
-  };
 
   if (loading) {
     return (
@@ -158,7 +232,7 @@ const Demandes = () => {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Rechercher..."
+                  placeholder="Rechercher par client ou demande..."
                   className="w-full pl-8 pr-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -192,107 +266,139 @@ const Demandes = () => {
           </div>
         </div>
 
-        {/* Requests Grid */}
-        {filteredRequests.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Aucune demande trouvée.</p>
+        {/* Affichage conditionnel : Liste des clients ou demandes d'un client */}
+        {selectedClient ? (
+          <div>
+            <button
+              onClick={handleBackToClients}
+              className="mb-4 flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm"
+            >
+              <ChevronLeft size={16} className="mr-1" />
+              Retour à la liste des clients
+            </button>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Demandes de {selectedClient}
+            </h2>
+            {filteredRequests.length === 0 ? (
+              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Aucune demande trouvée pour ce client.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
+                  {visibleRequests.map((request) => {
+                    const isOld = request.is_updated || ['resolue', 'rejetee'].includes(request.status);
+                    return (
+                      <div
+                        key={request.id}
+                        className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-300"
+                      >
+                        <div className="p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">
+                              {request.title}
+                            </h3>
+                            <div className="flex items-center gap-2">
+                              {isOld && (
+                                <Lock size={12} className="text-gray-400 dark:text-gray-500" title="Demande non modifiable" />
+                              )}
+                              <button
+                                onClick={() => handleViewRequest(request.id, isOld)}
+                                className={`p-1 rounded-full ${
+                                  isOld
+                                    ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                                    : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+                                }`}
+                                title={isOld ? 'Demande non modifiable' : 'Voir les détails'}
+                                disabled={isOld}
+                              >
+                                <Eye size={14} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                            <p>ID: {request.id}</p>
+                            <p>Client: {request.first_name || request.user_name || 'N/A'}</p>
+                            <p>Date: {formatDate(request.created_at)}</p>
+                          </div>
+                          <div className="mt-2">
+                            <StatusBadge status={request.status} />
+                          </div>
+                        </div>
+                        <div className="border-t border-gray-200 dark:border-gray-700">
+                          <button
+                            className="w-full flex justify-between items-center px-4 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            onClick={() => toggleRequest(request.id)}
+                          >
+                            <span>Détails</span>
+                            {expandedRequest === request.id ? (
+                              <ChevronUp size={14} />
+                            ) : (
+                              <ChevronDown size={14} />
+                            )}
+                          </button>
+                          {expandedRequest === request.id && (
+                            <div className="px-4 pb-4 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                              <p className="line-clamp-3">{request.description || 'Aucune description'}</p>
+                              {request.admin_comment && (
+                                <p className="mt-2 text-gray-600 dark:text-gray-400">
+                                  <strong>Commentaire admin :</strong> {request.admin_comment}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-3 mt-6">
+                    <button
+                      onClick={() => setCurrentPage((prev) => (prev === 0 ? totalPages - 1 : prev - 1))}
+                      className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={totalPages <= 1}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                      Page {currentPage + 1} sur {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage((prev) => (prev === totalPages - 1 ? 0 : prev + 1))}
+                      className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={totalPages <= 1}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
-              {visibleRequests.map((request) => {
-                const isOld = request.is_updated || ['resolue', 'rejetee'].includes(request.status);
-                return (
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Liste des Clients
+            </h2>
+            {clients.length === 0 ? (
+              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Aucun client trouvé.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
+                {clients.map((client) => (
                   <div
-                    key={request.id}
-                    className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-300"
+                    key={client.name}
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-300 p-4 cursor-pointer"
+                    onClick={() => handleClientSelect(client.name)}
                   >
-                    <div className="p-4">
-                      {/* Header */}
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">
-                          {request.title}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          {isOld && (
-                            <Lock size={12} className="text-gray-400 dark:text-gray-500" title="Demande non modifiable" />
-                          )}
-                          <button
-                            onClick={() => handleViewRequest(request.id, isOld)}
-                            className={`p-1 rounded-full ${
-                              isOld
-                                ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                                : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
-                            }`}
-                            title={isOld ? 'Demande non modifiable' : 'Voir les détails'}
-                            disabled={isOld}
-                          >
-                            <Eye size={14} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Metadata */}
-                      <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                        <p>ID: {request.id}</p>
-                        <p>Client: {request.user_name || 'N/A'}</p>
-                        <p>Date: {formatDate(request.created_at)}</p>
-                      </div>
-
-                      {/* Status */}
-                      <div className="mt-2">
-                        <StatusBadge status={request.status} />
-                      </div>
-                    </div>
-
-                    {/* Expandable Details */}
-                    <div className="border-t border-gray-200 dark:border-gray-700">
-                      <button
-                        className="w-full flex justify-between items-center px-4 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        onClick={() => toggleRequest(request.id)}
-                      >
-                        <span>Détails</span>
-                        {expandedRequest === request.id ? (
-                          <ChevronUp size={14} />
-                        ) : (
-                          <ChevronDown size={14} />
-                        )}
-                      </button>
-                      {expandedRequest === request.id && (
-                        <div className="px-4 pb-4 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                          <p className="line-clamp-3">{request.description || 'Aucune description'}</p>
-                          {request.admin_comment && (
-                            <p className="mt-2 text-gray-600 dark:text-gray-400">
-                              <strong>Commentaire admin :</strong> {request.admin_comment}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{client.name}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {client.requests.length} demande{client.requests.length > 1 ? 's' : ''}
+                    </p>
                   </div>
-                );
-              })}
-            </div>
-
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-3 mt-6">
-                <button
-                  onClick={handlePrevPage}
-                  className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={totalPages <= 1}
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                  Page {currentPage + 1} sur {totalPages}
-                </span>
-                <button
-                  onClick={handleNextPage}
-                  className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={totalPages <= 1}
-                >
-                  <ChevronRight size={16} />
-                </button>
+                ))}
               </div>
             )}
           </div>
