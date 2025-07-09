@@ -170,7 +170,7 @@ const AdminLayout = () => {
                   : ''
               }`}
               onClick={() => setIsSidebarOpen(false)}
-              aria-label="À propos de SatisGest"
+              aria-label="À propos de Clientélia"
             >
               <Info size={20} />
             </Link>
@@ -202,7 +202,7 @@ const AdminLayout = () => {
           <div className="container mx-auto px-6">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-3 text-sm">
               <p className="text-gray-500 dark:text-gray-400">
-                © 2025 SatisGest. Tous droits réservés.
+                © 2025 Clientélia. Tous droits réservés.
               </p>
               <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400">
                 <span className="font-medium">Admin:</span>

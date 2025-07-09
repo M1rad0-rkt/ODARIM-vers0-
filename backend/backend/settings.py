@@ -82,7 +82,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'demandes',
+        'NAME': 'essai',
         'USER': 'root',
         'PASSWORD': '',
         'HOST': 'localhost',
@@ -156,6 +156,16 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
-CORS_ALLOW_ALL_ORIGINS = True  # (ou mieux, configure précisément)
+
+CORS_ALLOW_ALL_ORIGINS = True  
+
+# backend/settings.py
+from dotenv import load_dotenv
+import os
+load_dotenv()  # Charge les variables du .env
+
+MISTRAL_API_KEY = os.getenv('MISTRAL_API_KEY')
+
+
 
 

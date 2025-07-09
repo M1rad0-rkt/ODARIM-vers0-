@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from demandes.views import RequestUpdateView, LoginView,NotificationListView, UserProfileView, UserListCreateView, UserDetailView, RegisterView,ChangePasswordView,  logout_view,RequestDeleteView,  RequestViewSet, CreateRequestAPIView,add_feedback, get_request_by_id,UpdateRequestStatusView,CustomTokenObtainPairView,StatsView, get_all_requests, FeedbackListView
+from demandes.views import AIAssistantView, AIAssistantHistoryView, RequestUpdateView, LoginView,NotificationListView, UserProfileView, UserListCreateView, UserDetailView, RegisterView,ChangePasswordView,  logout_view,RequestDeleteView,  RequestViewSet, CreateRequestAPIView,add_feedback, get_request_by_id,UpdateRequestStatusView,CustomTokenObtainPairView,StatsView, get_all_requests, FeedbackListView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
@@ -43,4 +43,6 @@ urlpatterns = [
     path('api/requests/create/', CreateRequestAPIView.as_view(), name='create-request'),
     path('api/stats/', StatsView.as_view(), name='stats'),
     path('api/logout/', logout_view),
+    path('api/ai-assistant/', AIAssistantView.as_view(), name='ai_assistant'),
+    path('api/ai-assistant/history/', AIAssistantHistoryView.as_view(), name='ai_assistant_history'),
 ]

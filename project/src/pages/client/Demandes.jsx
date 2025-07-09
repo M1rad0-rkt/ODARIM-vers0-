@@ -75,7 +75,9 @@ const Demandes = () => {
     debounce((term, status, category, reqs, showArchived) => {
       let result = [...reqs];
       result = result.filter((request) =>
-        showArchived ? request.feedback : !request.feedback
+        showArchived ? 
+          (request.feedback || request.status === 'rejetee') : 
+          (!request.feedback && request.status !== 'rejetee')
       );
       if (status !== 'all') {
         result = result.filter((request) => request.status === status);
@@ -116,17 +118,21 @@ const Demandes = () => {
       name: 'Non satisfaits',
       value: requests.filter((r) => r.feedback && r.feedback.rating > 0 && r.feedback.rating < 3).length,
     },
+    {
+      name: 'Rejetées',
+      value: requests.filter((r) => r.status === 'rejetee').length,
+    },
   ];
 
   console.log('Satisfaction Data:', satisfactionData);
 
   const chartData = {
-    labels: ['Satisfaits', 'Non satisfaits'],
+    labels: ['Satisfaits', 'Non satisfaits', 'Rejetées'],
     datasets: [
       {
-        data: [satisfactionData[0].value, satisfactionData[1].value],
-        backgroundColor: ['rgb(34, 197, 94)', 'rgb(239, 68, 68)'],
-        hoverBackgroundColor: ['rgb(22, 163, 74)', 'rgb(220, 38, 38)'],
+        data: [satisfactionData[0].value, satisfactionData[1].value, satisfactionData[2].value],
+        backgroundColor: ['rgb(34, 197, 94)', 'rgb(239, 68, 68)', 'rgb(107, 114, 128)'],
+        hoverBackgroundColor: ['rgb(22, 163, 74)', 'rgb(220, 38, 38)', 'rgb(75, 85, 99)'],
         borderColor: ['rgb(229, 231, 235)'],
         borderWidth: 1,
       },
@@ -186,7 +192,7 @@ const Demandes = () => {
               {showArchived ? 'Mes Anciennes Demandes' : 'Mes Demandes'}
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              {showArchived ? 'Consultez vos demandes archivées' : 'Gérez vos demandes en cours et consultez leur statut'}
+              {showArchived ? 'Consultez vos demandes archivées et rejetées' : 'Gérez vos demandes en cours et consultez leur statut'}
             </p>
           </div>
           <div className="flex gap-3">
@@ -317,10 +323,10 @@ const Demandes = () => {
         {/* Satisfaction Chart */}
         {showArchived && (
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-300 mb-6 animate-slide-in">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Analyse de Satisfaction</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Analyse des Demandes Archivées</h2>
             {satisfactionData.reduce((sum, d) => sum + d.value, 0) === 0 ? (
               <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-                Aucune évaluation enregistrée pour vos demandes
+                Aucune demande archivée ou rejetée enregistrée
               </p>
             ) : (
               <div className="h-64">
@@ -334,12 +340,12 @@ const Demandes = () => {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 animate-slide-in overflow-x-auto max-h-[400px] overflow-y-auto">
           {filteredRequests.length === 0 ? (
             <div className="p-6 text-center">
-              {requests.filter((req) => (showArchived ? req.feedback : !req.feedback)).length === 0 ? (
+              {requests.filter((req) => (showArchived ? (req.feedback || req.status === 'rejetee') : (!req.feedback && req.status !== 'rejetee'))).length === 0 ? (
                 <>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     {showArchived
-                      ? 'Vous n\'avez aucune demande archivée.'
-                      : 'Vous n\'avez aucune demande enregistrée.'}
+                      ? 'Vous n\'avez aucune demande archivée ou rejetée.'
+                      : 'Vous n\'avez aucune demande active enregistrée.'}
                   </p>
                   {!showArchived && (
                     <Link

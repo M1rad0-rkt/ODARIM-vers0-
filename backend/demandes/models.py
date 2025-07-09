@@ -100,3 +100,19 @@ class Notification(models.Model):
 
     def __str__(self):
         return f'Notification pour {self.user.email} - Demande {self.request.id}'
+
+
+from django.db import models
+from django.conf import settings
+
+class AIConversation(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    message = models.TextField()
+    sender = models.CharField(max_length=10, choices=[('user', 'User'), ('ai', 'AI')])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.sender}: {self.message[:50]}"

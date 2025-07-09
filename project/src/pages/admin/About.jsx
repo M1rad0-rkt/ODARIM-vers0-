@@ -6,7 +6,7 @@ const About = () => {
     <div className="min-h-screen bg-background text-text p-6 sm:p-8 animate">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold tracking-tight mb-6">
-          À propos de SatisGest
+          À propos de Clientélia
         </h1>
         
         <div className="card mb-8">
@@ -17,7 +17,7 @@ const About = () => {
             </h2>
           </div>
           <p className="text-base mb-4">
-            SatisGest est une plateforme moderne conçue pour optimiser la gestion des demandes clients. Elle permet aux équipes de centraliser, suivre et résoudre les requêtes rapidement, tout en mesurant la satisfaction client en temps réel. Avec une interface intuitive et un design réactif, SatisGest améliore l’efficacité opérationnelle et renforce la fidélité des clients.
+            Clientélia est une plateforme moderne conçue pour optimiser la gestion des demandes clients. Elle permet aux équipes de centraliser, suivre et résoudre les requêtes rapidement, tout en mesurant la satisfaction client en temps réel. Avec une interface intuitive et un design réactif, Clientélia améliore l’efficacité opérationnelle et renforce la fidélité des clients.
           </p>
           <p className="text-base mb-4">
             Fonctionnalités principales :
@@ -41,20 +41,29 @@ const About = () => {
               alt="Photo du créateur"
               className="w-16 h-16 rounded-full border-4 border-success shadow-md mr-4 object-cover"
             />
+            <Users size={28} className="text-success mr-3" />
             <h2 className="text-2xl font-semibold">
               À propos du créateur
             </h2>
           </div>
           <p className="text-base mb-4">
-            SatisGest a été créé par Mirado RAKOTONIAINA, un développeur full-stack passionné par les solutions numériques qui transforment les processus d’entreprise. En combinant des technologies modernes comme Vite, React, Django, Tailwind CSS, et MySQL, RAOTONIAINA a conçu une application performante, sécurisée, et centrée sur l’utilisateur. L’objectif est de fournir aux organisations un outil puissant pour gérer leurs interactions clients tout en maximisant la satisfaction.
+            Clientélia a été créé par Mirado RAKOTONIAINA, un développeur full-stack passionné par les solutions numériques qui transforment les processus d’entreprise. En combinant des technologies modernes comme Vite, React, Django, Tailwind CSS, et MySQL, RAKOTONIAINA a conçu une application performante, sécurisée, et centrée sur l’utilisateur. L’objectif est de fournir aux organisations un outil puissant pour gérer leurs interactions clients tout en maximisant la satisfaction.
           </p>
           <p className="text-base">
             Contact :{' '}
             <a
-              href="mailto:votre.email@example.com"
+              href="miradorakoto111@gmail.com"
               className="text-success hover:underline"
             >
               miradorakoto111@gmail.com
+            </a>
+            <br />
+            Mobile :{' '}
+            <a
+              href="#"
+              className="text-success hover:underline"
+            >
+              033 90 821 68
             </a>
             <br />
             GitHub :{' '}

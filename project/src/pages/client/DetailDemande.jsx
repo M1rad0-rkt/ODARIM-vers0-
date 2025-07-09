@@ -24,7 +24,7 @@ const DetailDemande = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState('');
-  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [feedbackComment, setFeedbackComment] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
@@ -65,7 +65,7 @@ const DetailDemande = () => {
       console.log('Updated request:', updatedRequest);
       setRequest(updatedRequest);
       setSuccess('Évaluation envoyée avec succès. La demande a été archivée.');
-      setShowFeedbackForm(false);
+      setShowFeedbackModal(false);
       setError(null);
       setTimeout(() => {
         navigate('/client/demandes?refresh=true&success=true');
@@ -164,7 +164,7 @@ const DetailDemande = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => navigate('/client')}
+                onClick={() => navigate('/client/demandes')}
                 className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
               >
                 <ArrowLeft size={16} className="mr-2" />
@@ -189,7 +189,7 @@ const DetailDemande = () => {
                   </span>
                 ) : (
                   <button
-                    onClick={() => setShowFeedbackForm(true)}
+                    onClick={() => setShowFeedbackModal(true)}
                     className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white text-sm font-medium hover:from-green-600 hover:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
                   >
                     <Star size={16} className="mr-2" />
@@ -226,6 +226,80 @@ const DetailDemande = () => {
             >
               <X size={20} />
             </button>
+          </div>
+        )}
+
+        {/* Feedback Modal */}
+        {showFeedbackModal && !request.feedback?.rating && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl transform transition-all duration-300 scale-100">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Évaluer la résolution</h2>
+                <button
+                  onClick={() => {
+                    setShowFeedbackModal(false);
+                    setError(null);
+                  }}
+                  className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleSubmitFeedback} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                    Satisfaction (1-5 étoiles)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setRating(value)}
+                        className={`p-1 rounded-full transition-transform duration-200 hover:scale-110 ${
+                          rating >= value ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600'
+                        }`}
+                        aria-label={`${value} étoile${value > 1 ? 's' : ''}`}
+                      >
+                        <Star size={24} fill={rating >= value ? 'currentColor' : 'none'} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="relative group">
+                  <label htmlFor="comment" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                    Commentaire (optionnel)
+                  </label>
+                  <textarea
+                    id="comment"
+                    rows={4}
+                    className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg placeholder:font-light resize-none"
+                    value={feedbackComment}
+                    onChange={(e) => setFeedbackComment(e.target.value)}
+                    placeholder="Votre retour sur la résolution..."
+                  />
+                </div>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowFeedbackModal(false);
+                      setError(null);
+                    }}
+                    className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingFeedback}
+                    className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white text-sm font-medium hover:from-green-600 hover:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submittingFeedback ? 'Envoi...' : 'Envoyer'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
@@ -346,67 +420,6 @@ const DetailDemande = () => {
                 </div>
               </div>
             )}
-
-            {/* Feedback Form */}
-            {showFeedbackForm && !request.feedback?.rating && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-300 border border-green-100 dark:border-green-800 animate-fade-in">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Évaluer la résolution</h2>
-                <form onSubmit={handleSubmitFeedback} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                      Satisfaction (1-5 étoiles)
-                    </label>
-                    <div className="flex items-center gap-2">
-                      {[1, 2, 3, 4, 5].map((value) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setRating(value)}
-                          className={`p-1 rounded-full transition-transform duration-200 hover:scale-110 ${
-                            rating >= value ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600'
-                          }`}
-                          aria-label={`${value} étoile${value > 1 ? 's' : ''}`}
-                        >
-                          <Star size={24} fill={rating >= value ? 'currentColor' : 'none'} />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="relative group">
-                    <label htmlFor="comment" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                      Commentaire (optionnel)
-                    </label>
-                    <textarea
-                      id="comment"
-                      rows={4}
-                      className="w-full px-4 py-2 bg-white/60 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent transition-all duration-300 text-sm group-hover:shadow-md focus:shadow-lg placeholder:font-light resize-none"
-                      value={feedbackComment}
-                      onChange={(e) => setFeedbackComment(e.target.value)}
-                      placeholder="Votre retour sur la résolution..."
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      type="submit"
-                      disabled={submittingFeedback}
-                      className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white text-sm font-medium hover:from-green-600 hover:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {submittingFeedback ? 'Envoi...' : 'Envoyer'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowFeedbackForm(false);
-                        setError(null);
-                      }}
-                      className="inline-flex items-center px-4 py-2 rounded-md bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-                    >
-                      Annuler
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
           </div>
 
           {/* Sidebar */}
@@ -453,7 +466,7 @@ const DetailDemande = () => {
           )}
           {request.status === 'resolue' && !request.feedback?.rating && user.role !== 'admin' && (
             <button
-              onClick={() => setShowFeedbackForm(true)}
+              onClick={() => setShowFeedbackModal(true)}
               className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 text-white text-sm font-medium hover:from-green-600 hover:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 shadow-lg"
               title="Évaluer la résolution"
             >

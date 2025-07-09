@@ -27,20 +27,18 @@ const Demandes = () => {
   const [viewMode, setViewMode] = useState('active');
   const [expandedRequest, setExpandedRequest] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const [newClientDetected, setNewClientDetected] = useState(null);
   const requestsPerPage = 6;
 
   useEffect(() => {
     const fetchRequests = async () => {
       try {
         const data = await getAllRequests();
-        console.log('Données brutes de getAllRequests:', data);
         setRequests(data);
-
-        // Initialiser les demandes filtrées par défaut (actives)
         setFilteredRequests(data.filter((req) => !req.is_updated && !['resolue', 'rejetee'].includes(req.status)));
       } catch (err) {
         console.error('Erreur lors de la récupération des demandes:', err);
-        setError('Impossible de charger les demandes');
+        setError('Impossible de charger les demandes. Veuillez réessayer.');
       } finally {
         setLoading(false);
       }
@@ -49,17 +47,14 @@ const Demandes = () => {
   }, []);
 
   useEffect(() => {
-    // Mettre à jour la liste des clients en fonction de viewMode et searchTerm
     const updateClients = () => {
       let filteredData = [...requests];
       const lowerSearch = searchTerm.toLowerCase();
 
-      // Filtrer les demandes pour obtenir les clients correspondants
       if (searchTerm) {
         filteredData = filteredData.filter(
           (req) =>
-            (req.first_name && req.first_name.toLowerCase().includes(lowerSearch)) ||
-            (req.user_name && req.user_name.toLowerCase().includes(lowerSearch))
+            (req.first_name?.toLowerCase().includes(lowerSearch) || req.user_name?.toLowerCase().includes(lowerSearch))
         );
       }
 
@@ -67,6 +62,9 @@ const Demandes = () => {
         .map(name => ({
           name,
           requests: filteredData.filter(req => (req.first_name || req.user_name || 'N/A') === name),
+          isNew: !filteredData.filter(req => (req.first_name || req.user_name || 'N/A') === name).some(
+            req => req.is_updated || ['resolue', 'rejetee'].includes(req.status)
+          ),
         }))
         .filter(client => {
           if (viewMode === 'active') {
@@ -75,68 +73,58 @@ const Demandes = () => {
           return client.requests.some(req => req.is_updated || ['resolue', 'rejetee'].includes(req.status));
         });
 
+      // Détecter un nouveau client
+      const newClients = uniqueClients.filter(client => client.isNew);
+      if (newClients.length > 0 && viewMode === 'active') {
+        setNewClientDetected(newClients[0].name);
+        setTimeout(() => setNewClientDetected(null), 3000); // Notification temporaire
+      }
+
       setClients(uniqueClients);
 
-      // Réinitialiser le client sélectionné si le client n'a plus de demandes
       if (selectedClient && !uniqueClients.some(client => client.name === selectedClient)) {
         setSelectedClient(null);
+        setCurrentPage(0);
       }
     };
 
     updateClients();
-  }, [viewMode, requests, searchTerm]);
+  }, [viewMode, requests, searchTerm, selectedClient]);
 
   useEffect(() => {
-    if (selectedClient) {
-      // Filtrer les demandes du client sélectionné
-      let result = requests.filter(req => (req.first_name || req.user_name || 'N/A') === selectedClient);
-      if (viewMode === 'active') {
-        result = result.filter((req) => !req.is_updated && !['resolue', 'rejetee'].includes(req.status));
-      } else {
-        result = result.filter((req) => req.is_updated || ['resolue', 'rejetee'].includes(req.status));
-      }
-      if (statusFilter !== 'all') {
-        result = result.filter((request) => request.status === statusFilter);
-      }
-      if (categoryFilter !== 'all') {
-        result = result.filter((req) => req.category === categoryFilter);
-      }
-      if (searchTerm) {
-        const lowerSearch = searchTerm.toLowerCase();
-        result = result.filter(
-          (r) =>
-            r.title?.toLowerCase().includes(lowerSearch) ||
-            r.description?.toLowerCase().includes(lowerSearch)
-        );
-      }
-      setFilteredRequests(result);
-    } else {
-      // Filtrer toutes les demandes (quand aucun client n'est sélectionné)
-      let result = [...requests];
-      if (viewMode === 'active') {
-        result = result.filter((req) => !req.is_updated && !['resolue'].includes(req.status));
-      } else {
-        result = result.filter((req) => req.is_updated || ['resolue', 'rejetee'].includes(req.status));
-      }
-      if (statusFilter !== 'all') {
-        result = result.filter((request) => request.status === statusFilter.status);
-      }
+    let result = [...requests];
 
-      if (categoryFilter !== 'all') {
-        result = result.filter((request) => request.category === categoryFilter);
-      }
-      if (searchTerm) {
-        const lowerSearch = searchTerm.toLowerCase();
-        result = result.filter(
-          (r) =>
-            r.title?.toLowerCase().includes(lowerSearch) ||
-            r.description?.toLowerCase().includes(lowerSearch) ||
-            (r.first_name && r.first_name.toLowerCase().includes(lowerSearch)) ||
-            (r.user_name && r.user_name.toLowerCase().includes(lowerSearch))
-        );
-      }
-      setFilteredRequests(result);
+    if (selectedClient) {
+      result = result.filter(req => (req.first_name || req.user_name || 'N/A') === selectedClient);
     }
+
+    if (viewMode === 'active') {
+      result = result.filter((req) => !req.is_updated && !['resolue', 'rejetee'].includes(req.status));
+    } else {
+      result = result.filter((req) => req.is_updated || ['resolue', 'rejetee'].includes(req.status));
+    }
+
+    if (statusFilter !== 'all') {
+      result = result.filter((req) => req.status === statusFilter);
+    }
+
+    if (categoryFilter !== 'all') {
+      result = result.filter((req) => req.category === categoryFilter);
+    }
+
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      result = result.filter(
+        (req) =>
+          req.title?.toLowerCase().includes(lowerSearch) ||
+          req.description?.toLowerCase().includes(lowerSearch) ||
+          req.first_name?.toLowerCase().includes(lowerSearch) ||
+          req.user_name?.toLowerCase().includes(lowerSearch)
+      );
+    }
+
+    setFilteredRequests(result);
+    setCurrentPage(0); // Réinitialiser la pagination lors du filtrage
   }, [requests, searchTerm, statusFilter, categoryFilter, viewMode, selectedClient]);
 
   const getUniqueCategories = () => {
@@ -171,7 +159,7 @@ const Demandes = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-48">
-        <div className="animate-pulse text-gray-600 dark:text-gray-400 text-sm">Chargement...</div>
+        <div className="animate-pulse text-gray-600 dark:text-gray-300 text-sm">Chargement des demandes...</div>
       </div>
     );
   }
@@ -179,13 +167,20 @@ const Demandes = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Notification Toast for New Client */}
+        {newClientDetected && viewMode === 'active' && (
+          <div className="fixed top-4 right-4 bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg animate-pulse">
+            Nouveau client détecté : {newClientDetected}
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-            Gestion des Demandes
+            Gestion des Demandes Clients
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Supervisez et gérez les demandes clients
+            Organisez et suivez les demandes de vos clients avec facilité
           </p>
         </div>
 
@@ -206,22 +201,22 @@ const Demandes = () => {
                 <button
                   className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors ${
                     viewMode === 'active'
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-blue-600 text-white'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                   onClick={() => setViewMode('active')}
                 >
-                  Actives
+                  Demandes Actives
                 </button>
                 <button
                   className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors ${
                     viewMode === 'old'
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-blue-600 text-white'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                   onClick={() => setViewMode('old')}
                 >
-                  Anciennes
+                  Demandes Archivées
                 </button>
               </div>
               <Filter size={16} className="text-gray-500 dark:text-gray-400" />
@@ -232,8 +227,8 @@ const Demandes = () => {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Rechercher par client ou demande..."
-                  className="w-full pl-8 pr-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="Rechercher un client ou une demande..."
+                  className="w-full pl-8 pr-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -242,9 +237,9 @@ const Demandes = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">Tous Statuts</option>
+                <option value="all">Tous les Statuts</option>
                 <option value="en_attente">En attente</option>
                 <option value="en_cours">En cours</option>
                 <option value="resolue">Résolue</option>
@@ -253,9 +248,9 @@ const Demandes = () => {
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">Toutes Catégories</option>
+                <option value="all">Toutes les Catégories</option>
                 {getUniqueCategories()
                   .filter((c) => c !== 'all')
                   .map((cat) => (
@@ -271,7 +266,7 @@ const Demandes = () => {
           <div>
             <button
               onClick={handleBackToClients}
-              className="mb-4 flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm"
+              className="mb-4 flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm"
             >
               <ChevronLeft size={16} className="mr-1" />
               Retour à la liste des clients
@@ -307,7 +302,7 @@ const Demandes = () => {
                                 className={`p-1 rounded-full ${
                                   isOld
                                     ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                                    : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+                                    : 'text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'
                                 }`}
                                 title={isOld ? 'Demande non modifiable' : 'Voir les détails'}
                                 disabled={isOld}
@@ -356,7 +351,7 @@ const Demandes = () => {
                   <div className="flex justify-center items-center gap-3 mt-6">
                     <button
                       onClick={() => setCurrentPage((prev) => (prev === 0 ? totalPages - 1 : prev - 1))}
-                      className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={totalPages <= 1}
                     >
                       <ChevronLeft size={16} />
@@ -366,7 +361,7 @@ const Demandes = () => {
                     </span>
                     <button
                       onClick={() => setCurrentPage((prev) => (prev === totalPages - 1 ? 0 : prev + 1))}
-                      className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={totalPages <= 1}
                     >
                       <ChevronRight size={16} />
@@ -383,17 +378,26 @@ const Demandes = () => {
             </h2>
             {clients.length === 0 ? (
               <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Aucun client trouvé.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Aucun client trouvé pour ce filtre.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
                 {clients.map((client) => (
                   <div
                     key={client.name}
-                    className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-300 p-4 cursor-pointer"
+                    className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-300 p-4 cursor-pointer ${
+                      client.isNew && viewMode === 'active' ? 'animate-pulse border-blue-500 dark:border-blue-400' : ''
+                    }`}
                     onClick={() => handleClientSelect(client.name)}
                   >
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{client.name}</h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{client.name}</h3>
+                      {client.isNew && viewMode === 'active' && (
+                        <span className="text-xs bg-blue-600 dark:bg-blue-500 text-white px-2 py-1 rounded-full">
+                          Nouveau
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {client.requests.length} demande{client.requests.length > 1 ? 's' : ''}
                     </p>

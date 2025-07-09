@@ -61,6 +61,8 @@ const UserManagement = () => {
   const [isLoading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
   const usersPerPage = 10;
 
   useEffect(() => {
@@ -73,7 +75,6 @@ const UserManagement = () => {
   }, []);
 
   useEffect(() => {
-    // Auto-dismiss notification after 3 seconds
     if (notification) {
       const timer = setTimeout(() => {
         setNotification(null);
@@ -182,24 +183,29 @@ const UserManagement = () => {
   };
 
   const handleDeleteUser = async (id) => {
-    if (window.confirm('Voulez-vous vraiment supprimer cet utilisateur ?')) {
-      setLoading(true);
-      try {
-        const response = await makeAuthenticatedRequest(`http://localhost:8000/api/users/${id}/`, {
-          method: 'DELETE',
-        });
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.detail || 'Erreur lors de la suppression.');
-        }
-        fetchUsers();
-        setNotification({ type: 'success', message: 'Utilisateur supprimé avec succès !' });
-      } catch (error) {
-        console.error('Erreur lors de la suppression de l’utilisateur:', error);
-        setNotification({ type: 'error', message: error.message || 'Erreur lors de la suppression de l’utilisateur.' });
-      } finally {
-        setLoading(false);
+    setUserToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    setLoading(true);
+    try {
+      const response = await makeAuthenticatedRequest(`http://localhost:8000/api/users/${userToDelete}/`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || 'Erreur lors de la suppression.');
       }
+      fetchUsers();
+      setNotification({ type: 'success', message: 'Utilisateur supprimé avec succès !' });
+    } catch (error) {
+      console.error('Erreur lors de la suppression de l’utilisateur:', error);
+      setNotification({ type: 'error', message: error.message || 'Erreur lors de la suppression de l’utilisateur.' });
+    } finally {
+      setLoading(false);
+      setShowDeleteConfirm(false);
+      setUserToDelete(null);
     }
   };
 
@@ -258,6 +264,43 @@ const UserManagement = () => {
           <div className="flex items-center justify-center space-x-2 text-gray-600 dark:text-gray-300">
             <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             <span className="text-sm font-medium">Chargement...</span>
+          </div>
+        )}
+
+        {/* Delete Confirmation Popup */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-200 dark:border-gray-800 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Confirmer la suppression
+                </h3>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={confirmDeleteUser}
+                  className="px-4 py-2 rounded-md bg-red-600 dark:bg-red-700 text-white text-sm font-medium hover:bg-red-700 dark:hover:bg-red-800 transition-all duration-300"
+                  disabled={isLoading}
+                >
+                  Supprimer
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

@@ -64,8 +64,8 @@ class RequestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Request
-        fields = ['id', 'user', 'user_name', 'title','first_name', 'description', 'category', 'status', 'admin_comment', 'created_at', 'updated_at', 'feedback']
-        read_only_fields = ['user', 'status', 'admin_comment', 'created_at', 'updated_at', 'feedback']
+        fields = ['id', 'user', 'user_name', 'title', 'description','first_name', 'category', 'status', 'admin_comment', 'created_at', 'updated_at', 'feedback']
+        read_only_fields = ['user', 'status', 'admin_comment', 'created_at', 'updated_at', 'feedback','first_name']
 
     def get_user_name(self, obj):
         return obj.user.username if obj.user else None
@@ -120,3 +120,12 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ['id', 'request_id', 'request_title', 'message', 'is_read', 'created_at']
         read_only_fields = ['id', 'request_id', 'request_title', 'message', 'created_at']
+
+# ai_assistant/serializers.py
+from rest_framework import serializers
+from .models import AIConversation
+
+class AIConversationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AIConversation
+        fields = ['sender', 'message', 'created_at']

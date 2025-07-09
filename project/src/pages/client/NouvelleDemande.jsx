@@ -34,7 +34,7 @@ const NouvelleDemande = () => {
 
     try {
       setLoading(true);
-      const requestData = { title, description, category };
+      const requestData = { title, description, category, first_name:user.first_name, };
       const newRequest = await createRequest(requestData);
       console.log('New Request:', newRequest);
       setSuccess('Demande créée avec succès');

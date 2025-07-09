@@ -115,7 +115,7 @@ const Inscription = () => {
             </div>
           </div>
           <h2 className="text-3xl font-bold text-gray-700 dark:text-gray-100">Inscription</h2>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Créez un nouveau compte SatisGest</p>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Créez un nouveau compte Clientélia</p>
         </div>
 
         {notification && (

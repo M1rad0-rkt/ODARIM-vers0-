@@ -510,3 +510,139 @@ class UserDetailView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except User.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+# ai_assistant/views.py
+
+# demandes/views.
+import requests
+import time
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.conf import settings
+from .models import AIConversation
+from .serializers import AIConversationSerializer
+from rest_framework.permissions import IsAuthenticated
+
+class AIAssistantView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        print("Utilisateur connecté:", request.user.email)
+        message = request.data.get('message')
+        if not message:
+            print("Erreur: aucun message fourni")
+            return Response({'error': 'Message requis'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            print("Sauvegarde du message utilisateur:", message)
+            AIConversation.objects.create(
+                user=request.user,
+                message=message,
+                sender='user'
+            )
+        except Exception as e:
+            print("Erreur lors de la sauvegarde du message utilisateur:", str(e))
+            return Response(
+                {'error': f'Erreur lors de la sauvegarde du message: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Vérifier si la clé API Mistral est définie
+        if not settings.MISTRAL_API_KEY:
+            print("Erreur: MISTRAL_API_KEY non configurée")
+            return Response(
+                {'error': 'Clé API Mistral non configurée. Veuillez ajouter MISTRAL_API_KEY dans .env.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Paramètres pour la logique de réessai
+        max_retries = 3
+        retry_delay = 5  # Délai initial en secondes
+
+        for attempt in range(max_retries):
+            try:
+                headers = {
+                    'Authorization': f'Bearer {settings.MISTRAL_API_KEY}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                }
+                print("Envoi de la requête à Mistral AI (tentative {}): {}".format(attempt + 1, message))
+                response = requests.post(
+                    'https://api.mistral.ai/v1/chat/completions',
+                    json={
+                        'model': 'mistral-large-latest',
+                        'messages': [{'role': 'user', 'content': message}],
+                        'max_tokens': 200,
+                        'temperature': 0.7
+                    },
+                    headers=headers,
+                    timeout=10  # Ajout d'un timeout de 10 secondes
+                )
+                print("Réponse Mistral AI:", response.status_code, response.text)
+
+                if response.status_code == 400:
+                    return Response(
+                        {'error': f'Erreur 400: Requête invalide. Détails: {response.text}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                if response.status_code == 401:
+                    return Response(
+                        {'error': 'Clé API Mistral invalide. Vérifiez votre clé API.'},
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
+                if response.status_code == 429:
+                    if attempt < max_retries - 1:
+                        print(f"Erreur 429: Quota dépassé, réessai dans {retry_delay} secondes...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Backoff exponentiel
+                        continue
+                    else:
+                        return Response(
+                            {'error': 'Quota de requêtes Mistral dépassé. Réessayez plus tard.'},
+                            status=status.HTTP_429_TOO_MANY_REQUESTS
+                        )
+                if response.status_code == 503:
+                    return Response(
+                        {'error': 'Service Mistral indisponible. Réessayez plus tard.'},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE
+                    )
+                response.raise_for_status()
+                ai_response = response.json()['choices'][0]['message']['content']
+
+                print("Sauvegarde de la réponse AI:", ai_response)
+                AIConversation.objects.create(
+                    user=request.user,
+                    message=ai_response,
+                    sender='ai'
+                )
+                return Response({'response': ai_response}, status=status.HTTP_200_OK)
+            except requests.Timeout:
+                print("Erreur: Timeout lors de l'appel à l'API Mistral")
+                return Response(
+                    {'error': 'Délai d\'attente dépassé lors de l\'appel à l\'API Mistral.'},
+                    status=status.HTTP_504_GATEWAY_TIMEOUT
+                )
+            except requests.RequestException as e:
+                print("Erreur Mistral AI:", str(e))
+                return Response(
+                    {'error': f'Erreur lors de l\'appel à l\'API Mistral: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+class AIAssistantHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            print("Récupération de l'historique pour:", request.user.email)
+            conversations = AIConversation.objects.filter(user=request.user).order_by('created_at')
+            serializer = AIConversationSerializer(conversations, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            print("Erreur lors de la récupération de l'historique:", str(e))
+            return Response(
+                {'error': f'Erreur lors de la récupération de l\'historique: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

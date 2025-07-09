@@ -84,7 +84,7 @@ const Connexion = () => {
             </div>
           </div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Connexion</h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Accédez à votre espace SatisGest</p>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Accédez à votre espace Clientélia</p>
         </div>
 
         {error && (
