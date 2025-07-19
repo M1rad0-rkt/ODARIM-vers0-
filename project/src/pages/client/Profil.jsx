@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { AlertCircle, CheckCircle2, User, Mail, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 
 async function makeAuthenticatedRequest(url, options = {}) {
@@ -53,11 +54,12 @@ async function makeAuthenticatedRequest(url, options = {}) {
 }
 
 const Profil = () => {
-  const [first_name, setFirstName] = useState('');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [created_at, setCreatedAt] = useState('');
-  const [role, setRole] = useState('');
+  const { user, setUser, loading: authLoading } = useAuth();
+  const [first_name, setFirstName] = useState(user?.first_name || '');
+  const [username, setUsername] = useState(user?.email || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [created_at, setCreatedAt] = useState(user?.created_at || '');
+  const [role, setRole] = useState(user?.role === 'admin' ? 'Administrateur' : 'Client');
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -73,6 +75,7 @@ const Profil = () => {
 
   useEffect(() => {
     const loadProfile = async () => {
+      if (authLoading) return; // Attendre que AuthContext soit chargé
       try {
         const response = await makeAuthenticatedRequest('http://localhost:8000/api/users/me/', {
           method: 'GET',
@@ -86,6 +89,17 @@ const Profil = () => {
         setEmail(data.email);
         setCreatedAt(data.created_at);
         setRole(data.role === 'admin' ? 'Administrateur' : 'Client');
+        const updatedUser = {
+          id: data.id,
+          email: data.email,
+          username: data.username,
+          first_name: data.first_name || '',
+          role: data.role,
+          created_at: data.created_at,
+        };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        console.log('Profil chargé et AuthContext/localStorage mis à jour:', updatedUser);
       } catch (err) {
         console.error('Profile Fetch Error:', err);
         setNotification({ type: 'error', message: err.message || 'Erreur inconnue.' });
@@ -97,7 +111,7 @@ const Profil = () => {
       }
     };
     loadProfile();
-  }, [navigate]);
+  }, [navigate, setUser, authLoading]);
 
   const validatePassword = (password) => {
     const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -130,10 +144,19 @@ const Profil = () => {
         method: 'PUT',
         body: JSON.stringify({ first_name, email, username: email }),
       });
+      const data = await response.json();
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || 'La mise à jour a échoué.');
+        throw new Error(data.error || 'La mise à jour a échoué.');
       }
+      const updatedUser = {
+        ...user,
+        first_name: data.first_name,
+        email: data.email,
+        username: data.username,
+      };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      console.log('AuthContext et localStorage mis à jour après PUT:', updatedUser);
       setNotification({ type: 'success', message: 'Vos informations ont été mises à jour avec succès.' });
       setTimeout(() => setNotification(null), 3000);
     } catch (err) {
@@ -173,9 +196,9 @@ const Profil = () => {
         method: 'PATCH',
         body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
       });
+      const data = await response.json();
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || 'Le changement de mot de passe a échoué.');
+        throw new Error(data.message || 'Le changement de mot de passe a échoué.');
       }
       setNotification({ type: 'success', message: 'Mot de passe changé avec succès.' });
       setTimeout(() => setNotification(null), 3000);
@@ -207,10 +230,18 @@ const Profil = () => {
 
         {/* Notification */}
         {notification && (
-          <div className={`p-4 rounded-lg flex items-center space-x-2 transition-all duration-300 ${
-            notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}>
-            {notification.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+          <div
+            className={`p-4 rounded-lg flex items-center space-x-2 ${
+              notification.type === 'success'
+                ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
+                : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
+            }`}
+          >
+            {notification.type === 'success' ? (
+              <CheckCircle2 size={20} className="flex-shrink-0" />
+            ) : (
+              <AlertCircle size={20} className="flex-shrink-0" />
+            )}
             <span className="text-sm">{notification.message}</span>
           </div>
         )}

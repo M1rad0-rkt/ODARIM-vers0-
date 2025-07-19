@@ -319,7 +319,6 @@ const Demandes = () => {
             </div>
           )}
         </div>
-
         {/* Satisfaction Chart */}
         {showArchived && (
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-300 mb-6 animate-slide-in">
@@ -337,7 +336,7 @@ const Demandes = () => {
         )}
 
         {/* Requests Table */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 animate-slide-in overflow-x-auto max-h-[400px] overflow-y-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 animate-slide-in overflow-x-auto max-h-[300px] overflow-y-auto">
           {filteredRequests.length === 0 ? (
             <div className="p-6 text-center">
               {requests.filter((req) => (showArchived ? (req.feedback || req.status === 'rejetee') : (!req.feedback && req.status !== 'rejetee'))).length === 0 ? (
